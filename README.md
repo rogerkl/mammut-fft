@@ -24,22 +24,26 @@ This project is organized as a Rust workspace with multiple crates:
 The command-line interface supports the following commands:
 
 ```
-  open <filename>              - Open an audio file and perform FFT
-  save <filename>              - Save the audio file after inverse FFT
-  pow <exponent>               - Raise the amplitude of each FFT bin to the specified power
-  lowpass <cutoff_hz>          - Apply a lowpass filter at the specified cutoff frequency
-  highpass <cutoff_hz>         - Apply a highpass filter at the specified cutoff frequency
-  bandpass <low_hz> <high_hz>  - Apply a bandpass filter between the specified frequencies
-  phase <shift_radians>        - Apply a phase shift to all frequencies
-  phasemul <factor>            - Multiply all phases by a factor (creates interesting effects)
+  open <filename>                - Open an audio file and perform FFT
+  save <filename>                - Save the audio file after inverse FFT
+  pow <exponent>                 - Raise the amplitude of each FFT bin to the specified power
+  lowpass <cutoff_hz>            - Apply a lowpass filter at the specified cutoff frequency
+  highpass <cutoff_hz>           - Apply a highpass filter at the specified cutoff frequency
+  bandpass <low_hz> <high_hz>    - Apply a bandpass filter between the specified frequencies
+  phasemul <factor>              - Multiply all phases by a factor (creates interesting effects)
   swapbins <block_size> <repeat> - Randomly swap frequency bins
-  swapchannels <repeat>        - Randomly swap bins between channels (stereo effects)
-  mix <weight1> <weight2> ...  - Mix channels with specified weights
+  swapchannels <repeat>          - Randomly swap bins between channels (stereo effects)
+  spectrumshift <shift_hz>       - Shift the frequency spectrum up or down by the specified amount in Hz
+  stretch <exponent>             - Apply non-linear frequency stretching with the specified exponent
+  wobble <frequency> <amplitude> - Apply a wobbling effect to the frequency spectrum
+  threshold <level> [above]      - Apply a threshold filter to remove frequency components
+  derivateamp <multiplier>       - Apply amplitude derivative effect to the spectrum
+  keeppeaks                      - Keep only the local peaks in the frequency spectrum
   split <filename> <num_parts> [group_size] - Split frequency spectrum into multiple files
-  info                         - Display information about the loaded audio and FFT data
-  help                         - Show this help message
-  quit                         - Exit the program
-  ```
+  info                           - Display information about the loaded audio and FFT data
+  help                           - Show this help message
+  quit                           - Exit the program
+```
 
 ## Building and Running
 
