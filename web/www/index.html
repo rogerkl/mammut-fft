@@ -143,6 +143,107 @@
         
         <button id="applyChannelSwapButton">Apply Channel Swapping</button>
       </div>   
+
+      <div class="control-group">
+        <h3>Spectrum Shift</h3>
+        <p class="description">
+            Shifts the entire frequency spectrum up or down by the specified amount in Hz.
+        </p>
+        
+        <div class="slider-container">
+            <label for="spectrumShiftValue">Shift amount (Hz):</label>
+            <input type="range" id="spectrumShiftValue" min="-5000" max="5000" step="1" value="0">
+            <span id="spectrumShiftValueDisplay">0 Hz</span>
+        </div>
+        
+        <button id="applySpectrumShiftButton">Apply Spectrum Shift</button>
+      </div>
+
+      <div class="control-group">
+        <h3>Frequency Stretch</h3>
+        <p class="description">
+            Applies non-linear stretching to the frequency spectrum. Values > 1 compress high frequencies
+            and expand low frequencies, while values < 1 do the opposite.
+        </p>
+        
+        <div class="slider-container">
+            <label for="stretchExponent">Stretch exponent:</label>
+            <input type="range" id="stretchExponent" min="0.2" max="5" step="0.1" value="1.3">
+            <span id="stretchExponentDisplay">1.3</span>
+        </div>
+        
+        <button id="applyStretchButton">Apply Stretch</button>
+      </div>      
+
+      <div class="control-group">
+        <h3>Frequency Wobble</h3>
+        <p class="description">
+            Creates a sinusoidal modulation of frequency bins, resulting in a wobbling effect.
+        </p>
+        
+        <div class="slider-container">
+            <label for="wobbleFrequency">Wobble frequency:</label>
+            <input type="range" id="wobbleFrequency" min="1" max="50" step="0.5" value="10">
+            <span id="wobbleFrequencyDisplay">10.0</span>
+        </div>
+        
+        <div class="slider-container">
+            <label for="wobbleAmplitude">Wobble amplitude:</label>
+            <input type="range" id="wobbleAmplitude" min="0.001" max="0.1" step="0.001" value="0.01">
+            <span id="wobbleAmplitudeDisplay">0.01</span>
+        </div>
+        
+        <button id="applyWobbleButton">Apply Wobble</button>
+      </div>
+
+      <div class="control-group">
+        <h3>Threshold Filter</h3>
+        <p class="description">
+            Removes frequency components based on their amplitude, acting as either
+            a noise gate (remove below) or a peak limiter (remove above).
+        </p>
+        
+        <div class="slider-container">
+            <label for="thresholdLevel">Threshold level:</label>
+            <input type="range" id="thresholdLevel" min="0.01" max="5.0" step="0.01" value="1.0">
+            <span id="thresholdLevelDisplay">1.0</span>
+        </div>
+        
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="removeAboveThreshold">
+                Remove components above threshold (instead of below)
+            </label>
+        </div>
+        
+        <button id="applyThresholdButton">Apply Threshold Filter</button>
+      </div>    
+
+      <div class="control-group">
+        <h3>Amplitude Derivative</h3>
+        <p class="description">
+            Replaces each frequency bin's amplitude with the difference between it and
+            the previous bin, creating spectral edge detection effects.
+        </p>
+        
+        <div class="slider-container">
+            <label for="derivateMultiplier">Derivative multiplier:</label>
+            <input type="range" id="derivateMultiplier" min="0.1" max="10.0" step="0.1" value="1.0">
+            <span id="derivateMultiplierDisplay">1.0</span>
+        </div>
+        
+        <button id="applyDerivateButton">Apply Amplitude Derivative</button>
+      </div>
+
+      <div class="control-group">
+        <h3>Keep Peaks</h3>
+        <p class="description">
+            Keeps only the local maxima in the frequency spectrum, zeroing out all
+            other bins. Useful for isolating prominent frequency components.
+        </p>
+        
+        <button id="applyKeepPeaksButton">Apply Keep Peaks Filter</button>
+      </div>  
       
       <div class="control-group">
         <!--
@@ -342,6 +443,13 @@ Do not try to understand what happens - even the programmer can't explain it in 
         document.getElementById('applySwapBinsButton').addEventListener('click', applySwapBins);
         document.getElementById('applyChannelSwapButton').addEventListener('click', applyChannelSwap);
         document.getElementById('applySplitButton').addEventListener('click', applySplit);
+        document.getElementById('applySpectrumShiftButton').addEventListener('click', applySpectrumShift);
+        document.getElementById('applyStretchButton').addEventListener('click', applyStretch);
+        document.getElementById('applyWobbleButton').addEventListener('click', applyWobble);
+        document.getElementById('applyThresholdButton').addEventListener('click', applyThresholdFilter);
+        document.getElementById('applyDerivateButton').addEventListener('click', applyAmplitudeDerivative);
+        document.getElementById('applyKeepPeaksButton').addEventListener('click', applyKeepPeaks);
+
         
         // Filter type change handler
         document.getElementById('filterType').addEventListener('change', function() {
@@ -381,6 +489,30 @@ Do not try to understand what happens - even the programmer can't explain it in 
         document.getElementById('channelSwapRepeat').addEventListener('input', function() {
           document.getElementById('channelSwapRepeatValue').textContent = this.value;
         });
+
+        document.getElementById('spectrumShiftValue').addEventListener('input', function() {
+          document.getElementById('spectrumShiftValueDisplay').textContent = this.value + ' Hz';
+        });        
+
+        document.getElementById('stretchExponent').addEventListener('input', function() {
+          document.getElementById('stretchExponentDisplay').textContent = this.value;
+        });        
+
+        document.getElementById('wobbleFrequency').addEventListener('input', function() {
+          document.getElementById('wobbleFrequencyDisplay').textContent = this.value;
+        });
+
+        document.getElementById('wobbleAmplitude').addEventListener('input', function() {
+          document.getElementById('wobbleAmplitudeDisplay').textContent = this.value;
+        });   
+        
+        document.getElementById('thresholdLevel').addEventListener('input', function() {
+         document.getElementById('thresholdLevelDisplay').textContent = this.value;
+        });        
+
+        document.getElementById('derivateMultiplier').addEventListener('input', function() {
+          document.getElementById('derivateMultiplierDisplay').textContent = this.value;
+        });        
         
         // Draw empty grid on the canvas
         drawEmptySpectrum();
@@ -655,6 +787,132 @@ Do not try to understand what happens - even the programmer can't explain it in 
         console.error("Error swapping channel bins:", error);
       }
     }
+
+    function applySpectrumShift() {
+    try {
+        if (!audioProcessor) {
+            updateStatus('No audio loaded', true);
+            return;
+        }
+        
+        const shiftAmount = parseFloat(document.getElementById('spectrumShiftValue').value);
+        
+        updateStatus(`Applying spectrum shift of ${shiftAmount} Hz...`);
+        
+        audioProcessor.apply_spectrum_shift(shiftAmount);
+        
+        drawSpectrum();
+        updateStatus(`Spectrum shifted by ${shiftAmount} Hz successfully`, false, true);
+      } catch (error) {
+        updateStatus(`Error applying spectrum shift: ${error.message}`, true);
+        console.error("Error applying spectrum shift:", error);
+      }
+    }    
+
+    function applyStretch() {
+    try {
+        if (!audioProcessor) {
+            updateStatus('No audio loaded', true);
+            return;
+        }
+        
+        const exponent = parseFloat(document.getElementById('stretchExponent').value);
+        
+        updateStatus(`Applying frequency stretch with exponent ${exponent}...`);
+        
+        audioProcessor.apply_stretch(exponent);
+        
+        drawSpectrum();
+        updateStatus(`Frequency spectrum stretched successfully`, false, true);
+      } catch (error) {
+        updateStatus(`Error applying stretch: ${error.message}`, true);
+        console.error("Error applying stretch:", error);
+      }
+    }   
+    
+    function applyWobble() {
+    try {
+        if (!audioProcessor) {
+            updateStatus('No audio loaded', true);
+            return;
+        }
+        
+        const frequency = parseFloat(document.getElementById('wobbleFrequency').value);
+        const amplitude = parseFloat(document.getElementById('wobbleAmplitude').value);
+        
+        updateStatus(`Applying wobble effect with frequency ${frequency} and amplitude ${amplitude}...`);
+        
+        audioProcessor.apply_wobble(frequency, amplitude);
+        
+        drawSpectrum();
+        updateStatus(`Wobble effect applied successfully`, false, true);
+      } catch (error) {
+        updateStatus(`Error applying wobble: ${error.message}`, true);
+        console.error("Error applying wobble:", error);
+      }
+    }    
+
+    function applyThresholdFilter() {
+    try {
+        if (!audioProcessor) {
+            updateStatus('No audio loaded', true);
+            return;
+        }
+        
+        const level = parseFloat(document.getElementById('thresholdLevel').value);
+        const removeAbove = document.getElementById('removeAboveThreshold').checked;
+        
+        updateStatus(`Applying threshold filter with level ${level}, removing components ${removeAbove ? 'above' : 'below'} threshold...`);
+        
+        audioProcessor.apply_threshold(level, removeAbove);
+        
+        drawSpectrum();
+        updateStatus(`Threshold filter applied successfully`, false, true);
+      } catch (error) {
+        updateStatus(`Error applying threshold filter: ${error.message}`, true);
+        console.error("Error applying threshold filter:", error);
+      }
+    }    
+
+    function applyAmplitudeDerivative() {
+    try {
+        if (!audioProcessor) {
+            updateStatus('No audio loaded', true);
+            return;
+        }
+        
+        const multiplier = parseFloat(document.getElementById('derivateMultiplier').value);
+        
+        updateStatus(`Applying amplitude derivative with multiplier ${multiplier}...`);
+        
+        audioProcessor.apply_amplitude_derivative(multiplier);
+        
+        drawSpectrum();
+        updateStatus(`Amplitude derivative applied successfully`, false, true);
+      } catch (error) {
+        updateStatus(`Error applying amplitude derivative: ${error.message}`, true);
+        console.error("Error applying amplitude derivative:", error);
+      }
+    }    
+
+    function applyKeepPeaks() {
+    try {
+        if (!audioProcessor) {
+            updateStatus('No audio loaded', true);
+            return;
+        }
+        
+        updateStatus(`Applying keep peaks filter...`);
+        
+        audioProcessor.keep_peaks();
+        
+        drawSpectrum();
+        updateStatus(`Keep peaks filter applied successfully`, false, true);
+      } catch (error) {
+        updateStatus(`Error applying keep peaks filter: ${error.message}`, true);
+        console.error("Error applying keep peaks filter:", error);
+      }
+    }    
     
     // Function to handle frequency spectrum splitting
     async function applySplit() {

@@ -1,27 +1,27 @@
-use hound::{SampleFormat, WavReader, WavSpec, WavWriter};
-use std::io::{Write, Seek, Cursor};
-use std::cell::RefCell;
-use std::rc::Rc;
 use crate::{AudioProcessor, Result};
+use hound::{SampleFormat, WavReader, WavSpec, WavWriter};
+use std::cell::RefCell;
+use std::io::{Cursor, Seek, Write};
+use std::rc::Rc;
 
 // To get a hold on the buffer after calling WavWriter: use an Rc<RefCell<W>> to share ownership
 pub struct SharedWriter<W> {
-    writer: Rc<RefCell<Option<W>>>
+    writer: Rc<RefCell<Option<W>>>,
 }
 
 impl<W> SharedWriter<W> {
     pub fn new(writer: W) -> Self {
-        SharedWriter { 
-            writer: Rc::new(RefCell::new(Some(writer)))
+        SharedWriter {
+            writer: Rc::new(RefCell::new(Some(writer))),
         }
     }
-    
+
     pub fn clone_ref(&self) -> Self {
         SharedWriter {
-            writer: Rc::clone(&self.writer)
+            writer: Rc::clone(&self.writer),
         }
     }
-    
+
     pub fn take_writer(self) -> Option<W> {
         self.writer.borrow_mut().take()
     }
@@ -32,15 +32,21 @@ impl<W: Write> Write for SharedWriter<W> {
         if let Some(writer) = &mut *self.writer.borrow_mut() {
             writer.write(buf)
         } else {
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "Writer already taken"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Writer already taken",
+            ))
         }
     }
-    
+
     fn flush(&mut self) -> std::io::Result<()> {
         if let Some(writer) = &mut *self.writer.borrow_mut() {
             writer.flush()
         } else {
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "Writer already taken"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Writer already taken",
+            ))
         }
     }
 }
@@ -50,7 +56,10 @@ impl<W: Seek> Seek for SharedWriter<W> {
         if let Some(writer) = &mut *self.writer.borrow_mut() {
             writer.seek(pos)
         } else {
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "Writer already taken"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Writer already taken",
+            ))
         }
     }
 }
@@ -178,13 +187,16 @@ pub fn load_from_wav(processor: &mut AudioProcessor, filename: &str) -> Result<(
 ///
 /// This function handles converting the processor's time domain data
 /// to an appropriate format and writing it to the Writer provided
-/// 
-fn save_to_wav_writer_provider<F, W, T>(processor: &mut AudioProcessor,provider: F,post_processor: impl FnOnce(W) -> T) -> Result<T> 
+///
+fn save_to_wav_writer_provider<F, W, T>(
+    processor: &mut AudioProcessor,
+    provider: F,
+    post_processor: impl FnOnce(W) -> T,
+) -> Result<T>
 where
     F: FnOnce() -> W,
     W: Write + Seek,
 {
-
     if let Some(time_data_channels) = processor.time_data() {
         let spec = WavSpec {
             channels: processor.channels(),
@@ -195,7 +207,7 @@ where
 
         let buf_writer = provider();
         let shared_writer = SharedWriter::new(buf_writer);
-        let writer_clone = shared_writer.clone_ref();                
+        let writer_clone = shared_writer.clone_ref();
 
         let mut writer = WavWriter::new(shared_writer, spec)
             .map_err(|e| format!("Error creating output file: {}", e))?;
@@ -225,29 +237,25 @@ where
 
 /// Save audio data from an AudioProcessor to a WAV file.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn save_to_wav(
-    processor: &mut AudioProcessor,
-    filename: &str
-) -> Result<()> {
+pub fn save_to_wav(processor: &mut AudioProcessor, filename: &str) -> Result<()> {
     use std::fs::File;
     use std::io::BufWriter;
-    
+
     save_to_wav_writer_provider(
         processor,
         || {
             let file = File::create(filename).expect("Failed to create file");
             BufWriter::new(file)
         },
-        |_| () // Discard the writer
+        |_| (), // Discard the writer
     )
 }
 
-pub fn save_to_wav_bytes(processor: &mut AudioProcessor) -> Result<Vec<u8>> 
-{
+pub fn save_to_wav_bytes(processor: &mut AudioProcessor) -> Result<Vec<u8>> {
     save_to_wav_writer_provider(
         processor,
         || Cursor::new(Vec::new()),
-        |cursor| cursor.into_inner() // Extract the Vec<u8>
+        |cursor| cursor.into_inner(), // Extract the Vec<u8>
     )
 }
 

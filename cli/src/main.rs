@@ -12,21 +12,35 @@ use rustyline::DefaultEditor;
 /// Print the help message showing available commands.
 fn print_help() {
     println!("Available commands:");
-    println!("  open <filename>              - Open an audio file and perform FFT");
-    println!("  save <filename>              - Save the audio file after inverse FFT");
-    println!("  pow <exponent>               - Raise the amplitude of each FFT bin to the specified power");
+    println!("  open <filename>                - Open an audio file and perform FFT");
+    println!("  save <filename>                - Save the audio file after inverse FFT");
+    println!("  pow <exponent>                 - Raise the amplitude of each FFT bin to the specified power");
     println!(
-        "  lowpass <cutoff_hz>          - Apply a lowpass filter at the specified cutoff frequency"
+        "  lowpass <cutoff_hz>            - Apply a lowpass filter at the specified cutoff frequency"
     );
-    println!("  highpass <cutoff_hz>         - Apply a highpass filter at the specified cutoff frequency");
-    println!("  bandpass <low_hz> <high_hz>  - Apply a bandpass filter between the specified frequencies");
-    println!("  phase <shift_radians>        - Apply a phase shift to all frequencies");
-    println!("  phasemul <factor>            - Multiply all phases by a factor (creates interesting effects)");
+    println!("  highpass <cutoff_hz>           - Apply a highpass filter at the specified cutoff frequency");
+    println!("  bandpass <low_hz> <high_hz>    - Apply a bandpass filter between the specified frequencies");
+    //println!("  phase <shift_radians>          - Apply a phase shift to all frequencies");
+    println!("  phasemul <factor>              - Multiply all phases by a factor (creates interesting effects)");
     println!("  swapbins <block_size> <repeat> - Randomly swap frequency bins");
     println!(
-        "  swapchannels <repeat>        - Randomly swap bins between channels (stereo effects)"
+        "  swapchannels <repeat>          - Randomly swap bins between channels (stereo effects)"
     );
-    println!("  mix <weight1> <weight2> ...  - Mix channels with specified weights");
+    println!("  spectrumshift <shift_hz>        - Shift the frequency spectrum up or down by the specified amount in Hz");
+    println!("  stretch <exponent>              - Apply non-linear frequency stretching with the specified exponent");
+    println!(
+        "  wobble <frequency> <amplitude> - Apply a wobbling effect to the frequency spectrum"
+    );
+    println!(
+        "  threshold <level> [above]      - Apply a threshold filter to remove frequency components"
+    );
+    println!(
+        "  derivateamp <multiplier>       - Apply amplitude derivative effect to the spectrum"
+    );
+    println!(
+        "  keeppeaks                      - Keep only the local peaks in the frequency spectrum"
+    );
+    //println!("  mix <weight1> <weight2> ...     - Mix channels with specified weights");
     println!("  split <filename> <num_parts> [group_size] - Split frequency spectrum into multiple files");
     println!(
         "  info                         - Display information about the loaded audio and FFT data"
@@ -308,6 +322,156 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
                 Err(e) => println!("Error: {}", e),
             }
         }
+        "spectrumshift" => {
+            if parts.len() != 2 {
+                println!("Usage: spectrumshift <shift_hz>");
+                return;
+            }
+
+            // Parse the shift in Hz
+            let shift_hz = match parts[1].parse::<f64>() {
+                Ok(value) => value,
+                Err(_) => {
+                    println!("Error: shift amount must be a valid floating-point number");
+                    return;
+                }
+            };
+
+            println!("Applying spectrum shift of {} Hz...", shift_hz);
+            match processor.apply_spectrum_shift(shift_hz) {
+                Ok(_) => println!("Spectrum shifted successfully"),
+                Err(e) => println!("Error: {}", e),
+            }
+        }
+        "stretch" => {
+            if parts.len() != 2 {
+                println!("Usage: stretch <exponent>");
+                println!("  exponent: Value > 1 compresses high frequencies, < 1 expands them (default: 1.3)");
+                return;
+            }
+
+            // Parse the exponent
+            let exponent = match parts[1].parse::<f64>() {
+                Ok(value) => value,
+                Err(_) => {
+                    println!("Error: exponent must be a valid floating-point number");
+                    return;
+                }
+            };
+
+            println!(
+                "Applying frequency spectrum stretch with exponent: {}",
+                exponent
+            );
+            match processor.apply_stretch(exponent) {
+                Ok(_) => println!("Frequency spectrum stretched successfully"),
+                Err(e) => println!("Error: {}", e),
+            }
+        }
+        "wobble" => {
+            if parts.len() != 3 {
+                println!("Usage: wobble <frequency> <amplitude>");
+                println!("  frequency: Controls wobble cycles (default: 10.0)");
+                println!("  amplitude: Controls displacement amount (0.0-0.1, default: 0.01)");
+                return;
+            }
+
+            // Parse the parameters
+            let frequency = match parts[1].parse::<f64>() {
+                Ok(value) => value,
+                Err(_) => {
+                    println!("Error: frequency must be a valid floating-point number");
+                    return;
+                }
+            };
+
+            let amplitude = match parts[2].parse::<f64>() {
+                Ok(value) => value,
+                Err(_) => {
+                    println!("Error: amplitude must be a valid floating-point number");
+                    return;
+                }
+            };
+
+            println!(
+                "Applying wobble effect with frequency: {}, amplitude: {}",
+                frequency, amplitude
+            );
+            match processor.apply_wobble(frequency, amplitude) {
+                Ok(_) => println!("Wobble effect applied successfully"),
+                Err(e) => println!("Error: {}", e),
+            }
+        }
+        "threshold" => {
+            if parts.len() != 2 && parts.len() != 3 {
+                println!("Usage: threshold <level> [above]");
+                println!("  level: Threshold level (default: 1.0)");
+                println!("  above: If 'above' is specified, removes components above threshold;");
+                println!("         otherwise, removes components below threshold (default)");
+                return;
+            }
+
+            // Parse the threshold level
+            let level = match parts[1].parse::<f64>() {
+                Ok(value) => value,
+                Err(_) => {
+                    println!("Error: threshold level must be a valid floating-point number");
+                    return;
+                }
+            };
+
+            // Determine the threshold direction
+            let remove_above = parts.len() == 3 && parts[2].to_lowercase() == "above";
+
+            println!(
+                "Applying threshold filter with level: {}, removing components {} threshold",
+                level,
+                if remove_above { "above" } else { "below" }
+            );
+
+            match processor.apply_threshold(level, remove_above) {
+                Ok(_) => println!("Threshold filter applied successfully"),
+                Err(e) => println!("Error: {}", e),
+            }
+        }
+        "derivateamp" => {
+            if parts.len() != 2 {
+                println!("Usage: derivateamp <multiplier>");
+                println!("  multiplier: Scaling factor for the derivative values (default: 1.0)");
+                return;
+            }
+
+            // Parse the multiplier parameter
+            let multiplier = match parts[1].parse::<f64>() {
+                Ok(value) => value,
+                Err(_) => {
+                    println!("Error: multiplier must be a valid floating-point number");
+                    return;
+                }
+            };
+
+            println!(
+                "Applying amplitude derivative with multiplier: {}",
+                multiplier
+            );
+            match processor.apply_amplitude_derivative(multiplier) {
+                Ok(_) => println!("Amplitude derivative applied successfully"),
+                Err(e) => println!("Error: {}", e),
+            }
+        }
+        "keeppeaks" => {
+            if parts.len() != 1 {
+                println!("Usage: keeppeaks");
+                println!("  Keeps only the local maxima in the frequency spectrum");
+                return;
+            }
+
+            println!("Applying keep peaks filter...");
+            match processor.keep_peaks() {
+                Ok(_) => println!("Keep peaks filter applied successfully"),
+                Err(e) => println!("Error: {}", e),
+            }
+        }
         "split" => {
             if parts.len() < 3 || parts.len() > 4 {
                 println!("Usage: split <filename> <num_parts> [group_size]");
@@ -516,7 +680,10 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
 }
 
 fn main() {
-    println!("mammut-fft FFT Audio Processor v{}", mammut_fft_lib::VERSION);
+    println!(
+        "mammut-fft FFT Audio Processor v{}",
+        mammut_fft_lib::VERSION
+    );
     println!("Type 'help' for available commands");
 
     // Initialize the library

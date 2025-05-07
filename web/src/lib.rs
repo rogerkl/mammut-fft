@@ -1,9 +1,8 @@
-use mammut_fft_lib::{AudioProcessor, Result};
-use mammut_fft_lib::utils::save_to_wav_bytes;
 use js_sys::Float32Array;
+use mammut_fft_lib::utils::save_to_wav_bytes;
+use mammut_fft_lib::{AudioProcessor, Result};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
-
 
 // Set up panic hook for better error messages
 fn init_panic_hook() {
@@ -200,6 +199,47 @@ impl WasmAudioProcessor {
         self.processor.apply_phase_shift(shift_radians)
     }
 
+    /// Apply spectrum shift
+    #[wasm_bindgen]
+    pub fn apply_spectrum_shift(&mut self, shift_hz: f64) -> Result<()> {
+        self.processor.apply_spectrum_shift(shift_hz)
+    }
+
+    /// Apply frequency spectrum stretch
+    #[wasm_bindgen]
+    pub fn apply_stretch(&mut self, exponent: f64) -> Result<()> {
+        self.processor.apply_stretch(exponent)
+    }
+
+    /// Apply wobble effect
+    #[wasm_bindgen]
+    pub fn apply_wobble(&mut self, frequency: f64, amplitude: f64) -> Result<()> {
+        self.processor.apply_wobble(frequency, amplitude)
+    }
+
+    /// Apply threshold filter
+    #[wasm_bindgen]
+    pub fn apply_threshold(
+        &mut self,
+        threshold_level: f64,
+        remove_above_threshold: bool,
+    ) -> Result<()> {
+        self.processor
+            .apply_threshold(threshold_level, remove_above_threshold)
+    }
+
+    /// Apply amplitude derivative
+    #[wasm_bindgen]
+    pub fn apply_amplitude_derivative(&mut self, multiplier: f64) -> Result<()> {
+        self.processor.apply_amplitude_derivative(multiplier)
+    }
+
+    /// Apply keep peaks filter
+    #[wasm_bindgen]
+    pub fn keep_peaks(&mut self) -> Result<()> {
+        self.processor.keep_peaks()
+    }
+
     // Explicitly perform inverse FFT
     #[wasm_bindgen]
     pub fn perform_ifft(&mut self) -> Result<()> {
@@ -246,7 +286,7 @@ impl WasmAudioProcessor {
                     }
                 }
             }
-            if max==0. {
+            if max == 0. {
                 max = 1.;
             }
 
@@ -257,7 +297,7 @@ impl WasmAudioProcessor {
             for i in 0..samples_per_channel {
                 for ch in 0..channels {
                     let index = (i * channels + ch) as u32;
-                    result.set_index(index, (time_data[ch][i]/max) as f32);
+                    result.set_index(index, (time_data[ch][i] / max) as f32);
                 }
             }
 
@@ -269,7 +309,6 @@ impl WasmAudioProcessor {
 
     #[wasm_bindgen]
     pub fn save_to_wav_bytes(&mut self) -> std::result::Result<js_sys::Uint8Array, JsValue> {
-
         // First perform IFFT if needed
         if !self.processor.has_time_data() {
             self.processor.perform_ifft()?;
@@ -282,7 +321,7 @@ impl WasmAudioProcessor {
                 let array = js_sys::Uint8Array::new_with_length(bytes.len() as u32);
                 array.copy_from(&bytes);
                 Ok(array)
-            },
+            }
             Err(e) => Err(JsValue::from_str(&format!("Error: {}", e))),
         }
     }

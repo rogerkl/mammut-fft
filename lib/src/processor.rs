@@ -357,7 +357,6 @@ impl AudioProcessor {
     /// maintaining the balance between channels.
     pub fn normalize_time_data(&mut self) -> Result<()> {
         if let Some(time_data_channels) = &mut self.time_data {
-
             // Only normalize if we have a non-zero maximum
             if self.max_amplitude > 0.0 {
                 // Normalize all channels using the same scaling factor
@@ -829,6 +828,332 @@ impl AudioProcessor {
         }
     }
 
+    /// Apply a spectrum shift to move frequency content up or down
+    pub fn apply_spectrum_shift(&mut self, shift_hz: f64) -> Result<()> {
+        if let Some(polar_data_channels) = &mut self.fft_polar_data {
+            let num_channels = polar_data_channels.len();
+
+            // Calculate bin shift based on frequency resolution
+            let freq_resolution = self.sample_rate as f64 / self.fft_size as f64;
+            let bin_shift = (shift_hz / freq_resolution).round() as i32;
+
+            // Create temporary storage for the shifted data
+            let mut shifted_data = Vec::with_capacity(num_channels);
+            for channel_idx in 0..num_channels {
+                let bins_per_channel = polar_data_channels[channel_idx].len();
+                shifted_data.push(vec![Complex64::new(0.0, 0.0); bins_per_channel]);
+            }
+
+            // Process each channel
+            for channel_idx in 0..num_channels {
+                let channel_data = &polar_data_channels[channel_idx];
+                let channel_shifted = &mut shifted_data[channel_idx];
+                let nyquist_bin = channel_data.len() - 1;
+
+                // Process bins (exclude DC and Nyquist components)
+                for i in 1..nyquist_bin {
+                    let target_bin = i as i32 + bin_shift;
+
+                    // Ensure target bin is within valid range (not DC or Nyquist)
+                    if target_bin > 0 && target_bin < nyquist_bin as i32 {
+                        channel_shifted[target_bin as usize] = channel_data[i];
+                    }
+                    // Bins shifted outside the range are discarded (set to zero)
+                }
+
+                // Always preserve DC component (bin 0)
+                channel_shifted[0] = channel_data[0];
+
+                // Always preserve Nyquist component (last bin)
+                channel_shifted[nyquist_bin] = channel_data[nyquist_bin];
+            }
+
+            // Replace the original data with shifted data
+            for channel_idx in 0..num_channels {
+                polar_data_channels[channel_idx] = shifted_data[channel_idx].clone();
+            }
+
+            // Clear cartesian representation as it's now invalid
+            self.fft_data = None;
+
+            Ok(())
+        } else {
+            Err("No polar FFT data available. Load a file first.".to_string())
+        }
+    }
+
+    /// Apply a non-linear frequency stretch to the spectrum
+    ///
+    /// This operation raises the bin indices to a specified power, resulting
+    /// in either compression or expansion of different parts of the spectrum.
+    ///
+    /// # Parameters
+    ///
+    /// * `exponent` - The power to raise bin indices to. Values > 1 compress high
+    ///   frequencies and expand low frequencies, while values < 1 do the opposite.
+    pub fn apply_stretch(&mut self, exponent: f64) -> Result<()> {
+        if let Some(polar_data_channels) = &mut self.fft_polar_data {
+            let num_channels = polar_data_channels.len();
+
+            // Create temporary storage for the stretched data
+            let mut stretched_data = Vec::with_capacity(num_channels);
+            for channel_idx in 0..num_channels {
+                let bins_per_channel = polar_data_channels[channel_idx].len();
+                stretched_data.push(vec![Complex64::new(0.0, 0.0); bins_per_channel]);
+            }
+
+            // Calculate the scaling factor to keep the maximum bin the same
+            let max_bin = (polar_data_channels[0].len() - 1) as f64;
+            let scale = max_bin / (max_bin.powf(exponent));
+
+            // Process each channel
+            for channel_idx in 0..num_channels {
+                let channel_data = &polar_data_channels[channel_idx];
+                let channel_stretched = &mut stretched_data[channel_idx];
+                let nyquist_bin = channel_data.len() - 1;
+
+                // Always preserve DC component (bin 0)
+                channel_stretched[0] = channel_data[0];
+
+                // Process bins (exclude DC component)
+                for i in 1..nyquist_bin {
+                    // Calculate the source bin using the stretch formula
+                    let i_f64 = i as f64;
+                    let src_bin = (i_f64.powf(exponent) * scale).round() as usize;
+
+                    // Ensure source bin is within valid range
+                    if src_bin < nyquist_bin {
+                        channel_stretched[i] = channel_data[src_bin];
+                    }
+                }
+
+                // Always preserve Nyquist component (last bin)
+                channel_stretched[nyquist_bin] = channel_data[nyquist_bin];
+            }
+
+            // Replace the original data with stretched data
+            for channel_idx in 0..num_channels {
+                polar_data_channels[channel_idx] = stretched_data[channel_idx].clone();
+            }
+
+            // Clear cartesian representation as it's now invalid
+            self.fft_data = None;
+
+            Ok(())
+        } else {
+            Err("No polar FFT data available. Load a file first.".to_string())
+        }
+    }
+
+    /// Apply a wobble effect to the frequency spectrum
+    ///
+    /// This operation creates a sinusoidal modulation of bin positions,
+    /// resulting in a wobbling effect in the frequency domain.
+    ///
+    /// # Parameters
+    ///
+    /// * `frequency` - The frequency of the wobble modulation (higher values create more cycles)
+    /// * `amplitude` - The amplitude of the wobble (between 0.0 and 1.0, controlling displacement amount)
+    pub fn apply_wobble(&mut self, frequency: f64, amplitude: f64) -> Result<()> {
+        if let Some(polar_data_channels) = &mut self.fft_polar_data {
+            let num_channels = polar_data_channels.len();
+
+            // Create temporary storage for the wobbled data
+            let mut wobbled_data = Vec::with_capacity(num_channels);
+            for channel_idx in 0..num_channels {
+                let bins_per_channel = polar_data_channels[channel_idx].len();
+                wobbled_data.push(vec![Complex64::new(0.0, 0.0); bins_per_channel]);
+            }
+
+            // Process each channel
+            for channel_idx in 0..num_channels {
+                let channel_data = &polar_data_channels[channel_idx];
+                let channel_wobbled = &mut wobbled_data[channel_idx];
+                let nyquist_bin = channel_data.len() - 1;
+
+                // Always preserve DC component (bin 0)
+                channel_wobbled[0] = channel_data[0];
+
+                // Process bins (exclude DC component)
+                for i in 1..nyquist_bin {
+                    // Calculate wobble using sine function, matching the C code's formula
+                    let i_f64 = i as f64;
+                    let wobble_factor = 0.5
+                        * (f64::sin(
+                            4.0 * std::f64::consts::PI * i_f64 * frequency / (nyquist_bin as f64),
+                        ) + 1.0);
+                    let displacement = wobble_factor * amplitude * (nyquist_bin as f64) / 4.0;
+                    let src_bin = (i_f64 + displacement).round() as usize;
+
+                    // Ensure source bin is within valid range
+                    if src_bin > 0 && src_bin < nyquist_bin {
+                        channel_wobbled[i] = channel_data[src_bin];
+                    }
+                }
+
+                // Always preserve Nyquist component (last bin)
+                channel_wobbled[nyquist_bin] = channel_data[nyquist_bin];
+            }
+
+            // Replace the original data with wobbled data
+            for channel_idx in 0..num_channels {
+                polar_data_channels[channel_idx] = wobbled_data[channel_idx].clone();
+            }
+
+            // Clear cartesian representation as it's now invalid
+            self.fft_data = None;
+
+            Ok(())
+        } else {
+            Err("No polar FFT data available. Load a file first.".to_string())
+        }
+    }
+
+    /// Apply a threshold filter to the frequency spectrum
+    ///
+    /// This operation removes frequency components based on their amplitude.
+    /// It can either remove components below a threshold (noise gate)
+    /// or above a threshold (peak limiter).
+    ///
+    /// # Parameters
+    ///
+    /// * `threshold_level` - The threshold level to compare amplitudes against
+    /// * `remove_above_threshold` - If true, removes components above the threshold;
+    ///   if false, removes components below the threshold
+    pub fn apply_threshold(
+        &mut self,
+        threshold_level: f64,
+        remove_above_threshold: bool,
+    ) -> Result<()> {
+        if let Some(polar_data_channels) = &mut self.fft_polar_data {
+            let num_channels = polar_data_channels.len();
+
+            // Process each channel
+            for channel_idx in 0..num_channels {
+                let channel_data = &mut polar_data_channels[channel_idx];
+                let nyquist_bin = channel_data.len() - 1;
+
+                // Process bins (including all except DC component which we always keep)
+                for i in 1..=nyquist_bin {
+                    // Calculate amplitude from polar representation (stored in real part)
+                    let amplitude = channel_data[i].re;
+
+                    // Apply threshold operation
+                    if remove_above_threshold {
+                        if amplitude > threshold_level {
+                            // Zero out amplitudes above threshold
+                            channel_data[i] = Complex64::new(0.0, channel_data[i].im);
+                        }
+                    } else {
+                        if amplitude < threshold_level {
+                            // Zero out amplitudes below threshold
+                            channel_data[i] = Complex64::new(0.0, channel_data[i].im);
+                        }
+                    }
+                }
+            }
+
+            // Clear cartesian representation as it's now invalid
+            self.fft_data = None;
+
+            Ok(())
+        } else {
+            Err("No polar FFT data available. Load a file first.".to_string())
+        }
+    }
+
+    /// Apply an amplitude derivative operation to the frequency spectrum
+    ///
+    /// This operation replaces each frequency component's amplitude with
+    /// the difference between its amplitude and the previous bin's amplitude,
+    /// multiplied by a scaling factor. This creates interesting spectral effects
+    /// by emphasizing changes in the spectrum.
+    ///
+    /// # Parameters
+    ///
+    /// * `multiplier` - A scaling factor for the derivative values
+    pub fn apply_amplitude_derivative(&mut self, multiplier: f64) -> Result<()> {
+        if let Some(polar_data_channels) = &mut self.fft_polar_data {
+            let num_channels = polar_data_channels.len();
+
+            // Process each channel independently
+            for channel_idx in 0..num_channels {
+                let channel_data = &mut polar_data_channels[channel_idx];
+                let bin_count = channel_data.len();
+
+                // Always preserve DC component (bin 0)
+                let mut last_amplitude = channel_data[0].re;
+
+                // Process bins (excluding DC component)
+                for i in 1..bin_count {
+                    let current_amplitude = channel_data[i].re;
+                    let phase = channel_data[i].im;
+
+                    // Calculate amplitude derivative
+                    let amplitude_derivative = (current_amplitude - last_amplitude) * multiplier;
+
+                    // Replace amplitude with derivative, preserve phase
+                    channel_data[i] = Complex64::new(amplitude_derivative, phase);
+
+                    // Update last amplitude for next iteration
+                    last_amplitude = current_amplitude;
+                }
+            }
+
+            // Clear cartesian representation as it's now invalid
+            self.fft_data = None;
+
+            Ok(())
+        } else {
+            Err("No polar FFT data available. Load a file first.".to_string())
+        }
+    }
+
+    /// Apply a "keep peaks" filter to the frequency spectrum
+    ///
+    /// This operation keeps only the local maxima in the frequency spectrum,
+    /// zeroing out all bins that aren't local peaks. It compares each bin with
+    /// its neighbors and keeps only those bins that have higher amplitude than
+    /// both their neighbors.
+    pub fn keep_peaks(&mut self) -> Result<()> {
+        if let Some(polar_data_channels) = &mut self.fft_polar_data {
+            let num_channels = polar_data_channels.len();
+
+            // Create temporary copy of the data for comparison
+            let mut temp_data = polar_data_channels.clone();
+
+            // Process each channel
+            for channel_idx in 0..num_channels {
+                let channel_polar = &mut polar_data_channels[channel_idx];
+                let channel_temp = &temp_data[channel_idx];
+                let bin_count = channel_polar.len();
+
+                // Always preserve DC component (bin 0)
+
+                // Process bins (excluding DC and the last bin)
+                for i in 1..(bin_count - 1) {
+                    // Get amplitudes of current bin and its neighbors
+                    let amp_prev = channel_temp[i - 1].re * channel_temp[i - 1].re;
+                    let amp_curr = channel_temp[i].re * channel_temp[i].re;
+                    let amp_next = channel_temp[i + 1].re * channel_temp[i + 1].re;
+
+                    // Check if current bin is a local maximum
+                    if amp_curr < amp_prev || amp_curr < amp_next {
+                        // Not a peak, zero out the bin
+                        channel_polar[i] = Complex64::new(0.0, channel_polar[i].im);
+                    }
+                    // If it is a peak, keep it as is
+                }
+            }
+
+            // Clear cartesian representation as it's now invalid
+            self.fft_data = None;
+
+            Ok(())
+        } else {
+            Err("No polar FFT data available. Load a file first.".to_string())
+        }
+    }
     /// Mix channels with specified weights.
     ///
     /// This creates a new single-channel output by mixing the input channels.
