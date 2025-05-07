@@ -29,7 +29,7 @@ body {
 }
 
 .container {
-  max-width: 1800px;
+  max-width: 1000px;
   margin: 0 auto;
   background-color: var(--card-bg);
   padding: 20px;
@@ -418,4 +418,141 @@ button.success-button:hover {
   background-color: rgba(0, 0, 0, 0.1);
   border-radius: 4px;
   display: inline-block;
+}
+
+/* Main controls panel */
+.main-controls {
+  margin: 25px 0;
+}
+
+.audio-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.audio-panel #audioPlayer {
+  width: 60%;
+  height: 40px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  outline: none;
+}
+
+.essential-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+/* Tabs styling */
+.operations-tabs {
+  margin: 30px 0;
+  background-color: var(--card-bg);
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.tabs-header {
+  display: flex;
+  flex-wrap: wrap; /* Allow tabs to wrap to next line */
+  background-color: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tab-button {
+  background-color: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 12px 20px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  flex: 1 0 auto; /* Allow buttons to grow but set a minimum width */
+  text-align: center;
+  white-space: nowrap; /* Prevent text from wrapping inside button */
+  min-width: 120px; /* Set minimum width for tab buttons */
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background-color: var(--accent-color);
+}
+
+.tabs-content {
+  padding: 20px;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .audio-panel {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .audio-panel #audioPlayer {
+    width: 100%;
+  }
+  
+  .essential-buttons {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .tab-content.active {
+    grid-template-columns: 1fr;
+  }
+  
+  .tabs-header {
+    justify-content: center; /* Center the tabs when they wrap */
+  }
+  
+  .tab-button {
+    min-width: 110px; /* Slightly smaller on very small screens */
+    padding: 10px 15px;
+    font-size: 14px;
+  }  
+}
+
+.tab-button.active {
+  color: white;  /* Changed from accent color to white for better contrast */
+  font-weight: 500;
+  background-color: var(--success-color);  /* Using the same green as the Process Audio button */
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background-color: var(--success-color);  /* Changed to match the success button color */
+}
+
+/* Also update the hover state for a subtle indication */
+.tab-button:hover {
+  background-color: rgba(76, 175, 80, 0.1);  /* Light green background on hover */
+  color: var(--text-primary);
 }

@@ -68,255 +68,265 @@
       <div class="drag-message">Release to upload audio file</div>
       <div id="fileInfo" style="margin-top: 10px; font-size: 14px; color: var(--text-secondary);"></div>
     </div>
-    
-    <div class="audio-controls" style="display: none;">
-      <audio id="audioPlayer" controls></audio>
-      <button id="resetButton">Reset to Original</button>
+
+    <!-- Main controls always visible at the top -->
+    <div class="main-controls" style="display: none;">
+      <div class="audio-panel">
+        <div class="essential-buttons">
+          <button id="processButton" class="success-button">Process Audio</button>
+        </div>
+        <audio id="audioPlayer" controls></audio>
+        <div class="essential-buttons">
+          <button id="resetButton">Reset to Original</button>
+          <button id="downloadButton">Download Processed Audio</button>
+        </div>
+      </div>
+  
+      <div class="visualization">
+        <canvas id="spectrumCanvas" width="800" height="300"></canvas>
+      </div>
+    </div>    
+
+     <!-- Tabbed interface for all operations -->
+  <div class="operations-tabs" style="display: none;">
+    <div class="tabs-header">
+      <button class="tab-button active" data-tab="power">Amplitude Power</button>
+      <button class="tab-button" data-tab="phase-mult">Phase Multiplication</button>
+      <button class="tab-button" data-tab="bin-swap">Frequency Bin Swap</button>
+      <button class="tab-button" data-tab="channel-swap">Channel Bin Swap</button>
+      <button class="tab-button" data-tab="shift">Spectrum Shift</button>
+      <button class="tab-button" data-tab="stretch">Frequency Stretch</button>
+      <button class="tab-button" data-tab="wobble">Frequency Wobble</button>
+      <button class="tab-button" data-tab="threshold">Threshold Filter</button>
+      <button class="tab-button" data-tab="derivate">Amplitude Derivative</button>
+      <button class="tab-button" data-tab="keep-peaks">Keep Peaks</button>
+      <button class="tab-button" data-tab="split">Frequency Spectrum Split</button>
+      <button class="tab-button" data-tab="filters">Frequency Filters</button>
     </div>
     
-    <div class="visualization">
-      <canvas id="spectrumCanvas" width="800" height="300"></canvas>
-    </div>
-    
-    <div class="controls" style="display: none;">
-
-      <div class="control-group">
-        <h3>Processing & Export</h3>
-        <p class="description">Apply all changes and listen to the result, or download the processed audio as a WAV file.</p>
-        <button id="processButton" class="success-button">Process Audio</button>
-        <button id="downloadButton">Download Processed Audio</button>
+    <div class="tabs-content">
+      <div class="tab-content active" id="power-tab">
+        <div class="control-group">
+          <p class="description">Raises the amplitude of each frequency bin to the specified power.</p>
+          <div class="slider-container">
+            <input type="range" id="powerSlider" min="0.01" max="5" step="0.01" value="1">
+            <span id="powerValue">1.0</span>
+          </div>
+          <button id="applyPowerButton">Apply Power</button>
+        </div>
       </div>
-
-      <div class="control-group">
-        <h3>Amplitude Power</h3>
-        <p class="description">Raises the amplitude of each frequency bin to the specified power.</p>
-        <div class="slider-container">
-          <input type="range" id="powerSlider" min="0.01" max="5" step="0.01" value="1">
-          <span id="powerValue">1.0</span>
+      <div class="tab-content" id="phase-mult-tab">
+        <div class="control-group">
+          <p class="description">Multiplies each frequency's phase by this factor.</p>
+          <div class="slider-container">
+            <input type="range" id="phaseMultiplySlider" min="-3" max="3" step="0.01" value="1">
+            <span id="phaseMultiplyValue">1.0</span>
+          </div>
+          <button id="applyPhaseMultiplyButton">Apply Phase Multiply</button>
         </div>
-        <button id="applyPowerButton">Apply Power</button>
       </div>
-
-      <div class="control-group">
-        <h3>Phase Multiplication</h3>
-        <p class="description">Multiplies each frequency's phase by this factor.</p>
-        <div class="slider-container">
-          <input type="range" id="phaseMultiplySlider" min="-3" max="3" step="0.01" value="1">
-          <span id="phaseMultiplyValue">1.0</span>
+      <div class="tab-content" id="bin-swap-tab">    
+        <div class="control-group">
+          <p class="description">
+            Randomly swaps frequency bins.
+          </p>
+          
+          <div class="slider-container">
+            <label for="swapBlockSize">Block Size (% of full spectrum):</label>
+            <input type="range" id="swapBlockSize" min="0.01" max="100" step="0.01" value="1">
+            <span id="swapBlockSizeValue">1</span>
+          </div>
+          
+          <div class="slider-container">
+            <label for="swapRepeat">Number of Swaps (% of number of bins):</label>
+            <input type="range" id="swapRepeat" min="0.001" max="10" step="0.001" value="0.1">
+            <span id="swapRepeatValue">0.1</span>
+          </div>
+          
+          <button id="applySwapBinsButton">Apply Bin Swapping</button>
         </div>
-        <button id="applyPhaseMultiplyButton">Apply Phase Multiply</button>
       </div>
-
-      <div class="control-group">
-        <h3>Frequency Bin Swap</h3>
-        <p class="description">
-          Randomly swaps frequency bins.
-        </p>
-        
-        <div class="slider-container">
-          <label for="swapBlockSize">Block Size (% of full spectrum):</label>
-          <input type="range" id="swapBlockSize" min="0.01" max="100" step="0.01" value="1">
-          <span id="swapBlockSizeValue">1</span>
-        </div>
-        
-        <div class="slider-container">
-          <label for="swapRepeat">Number of Swaps (% of number of bins):</label>
-          <input type="range" id="swapRepeat" min="0.001" max="10" step="0.001" value="0.1">
-          <span id="swapRepeatValue">0.1</span>
-        </div>
-        
-        <button id="applySwapBinsButton">Apply Bin Swapping</button>
+      <div class="tab-content" id="channel-swap-tab">        
+        <div class="control-group">
+          <p class="description">
+            Randomly swaps frequency bins between different channels.
+            Only works with multi-channel audio (stereo or more).
+          </p>
+          
+          <div class="slider-container">
+            <label for="channelSwapRepeat">Number of Swaps:</label>
+            <input type="range" id="channelSwapRepeat" min="0.001" max="10" step="0.001" value="0.1">
+            <span id="channelSwapRepeatValue">0.1</span>
+          </div>
+          
+          <button id="applyChannelSwapButton">Apply Channel Swapping</button>
+        </div>     
       </div>
-
-      <div class="control-group">
-        <h3>Channel Bin Swap</h3>
-        <p class="description">
-          Randomly swaps frequency bins between different channels.
-          Only works with multi-channel audio (stereo or more).
-        </p>
-        
-        <div class="slider-container">
-          <label for="channelSwapRepeat">Number of Swaps:</label>
-          <input type="range" id="channelSwapRepeat" min="0.001" max="10" step="0.001" value="0.1">
-          <span id="channelSwapRepeatValue">0.1</span>
+      <div class="tab-content" id="shift-tab">  
+        <div class="control-group">
+          <p class="description">
+              Shifts the entire frequency spectrum up or down by the specified amount in Hz.
+          </p>
+          
+          <div class="slider-container">
+              <label for="spectrumShiftValue">Shift amount (Hz):</label>
+              <input type="range" id="spectrumShiftValue" min="-5000" max="5000" step="1" value="0">
+              <span id="spectrumShiftValueDisplay">0 Hz</span>
+          </div>
+          
+          <button id="applySpectrumShiftButton">Apply Spectrum Shift</button>
         </div>
-        
-        <button id="applyChannelSwapButton">Apply Channel Swapping</button>
-      </div>   
-
-      <div class="control-group">
-        <h3>Spectrum Shift</h3>
-        <p class="description">
-            Shifts the entire frequency spectrum up or down by the specified amount in Hz.
-        </p>
-        
-        <div class="slider-container">
-            <label for="spectrumShiftValue">Shift amount (Hz):</label>
-            <input type="range" id="spectrumShiftValue" min="-5000" max="5000" step="1" value="0">
-            <span id="spectrumShiftValueDisplay">0 Hz</span>
-        </div>
-        
-        <button id="applySpectrumShiftButton">Apply Spectrum Shift</button>
       </div>
-
-      <div class="control-group">
-        <h3>Frequency Stretch</h3>
-        <p class="description">
-            Applies non-linear stretching to the frequency spectrum. Values > 1 compress high frequencies
-            and expand low frequencies, while values < 1 do the opposite.
-        </p>
-        
-        <div class="slider-container">
-            <label for="stretchExponent">Stretch exponent:</label>
-            <input type="range" id="stretchExponent" min="0.2" max="5" step="0.1" value="1.3">
-            <span id="stretchExponentDisplay">1.3</span>
-        </div>
-        
-        <button id="applyStretchButton">Apply Stretch</button>
-      </div>      
-
-      <div class="control-group">
-        <h3>Frequency Wobble</h3>
-        <p class="description">
-            Creates a sinusoidal modulation of frequency bins, resulting in a wobbling effect.
-        </p>
-        
-        <div class="slider-container">
-            <label for="wobbleFrequency">Wobble frequency:</label>
-            <input type="range" id="wobbleFrequency" min="1" max="50" step="0.5" value="10">
-            <span id="wobbleFrequencyDisplay">10.0</span>
-        </div>
-        
-        <div class="slider-container">
-            <label for="wobbleAmplitude">Wobble amplitude:</label>
-            <input type="range" id="wobbleAmplitude" min="0.001" max="0.1" step="0.001" value="0.01">
-            <span id="wobbleAmplitudeDisplay">0.01</span>
-        </div>
-        
-        <button id="applyWobbleButton">Apply Wobble</button>
+      <div class="tab-content" id="stretch-tab">        
+        <div class="control-group">
+          <p class="description">
+              Applies non-linear stretching to the frequency spectrum. Values > 1 compress high frequencies
+              and expand low frequencies, while values < 1 do the opposite.
+          </p>
+          
+          <div class="slider-container">
+              <label for="stretchExponent">Stretch exponent:</label>
+              <input type="range" id="stretchExponent" min="0.2" max="5" step="0.1" value="1.3">
+              <span id="stretchExponentDisplay">1.3</span>
+          </div>
+          
+          <button id="applyStretchButton">Apply Stretch</button>
+        </div>      
       </div>
-
-      <div class="control-group">
-        <h3>Threshold Filter</h3>
-        <p class="description">
-            Removes frequency components based on their amplitude, acting as either
-            a noise gate (remove below) or a peak limiter (remove above).
-        </p>
-        
-        <div class="slider-container">
-            <label for="thresholdLevel">Threshold level:</label>
-            <input type="range" id="thresholdLevel" min="0.01" max="5.0" step="0.01" value="1.0">
-            <span id="thresholdLevelDisplay">1.0</span>
+      <div class="tab-content" id="wobble-tab">        
+        <div class="control-group">
+          <p class="description">
+              Creates a sinusoidal modulation of frequency bins, resulting in a wobbling effect.
+          </p>
+          
+          <div class="slider-container">
+              <label for="wobbleFrequency">Wobble frequency:</label>
+              <input type="range" id="wobbleFrequency" min="1" max="50" step="0.5" value="10">
+              <span id="wobbleFrequencyDisplay">10.0</span>
+          </div>
+          
+          <div class="slider-container">
+              <label for="wobbleAmplitude">Wobble amplitude:</label>
+              <input type="range" id="wobbleAmplitude" min="0.001" max="0.1" step="0.001" value="0.01">
+              <span id="wobbleAmplitudeDisplay">0.01</span>
+          </div>
+          
+          <button id="applyWobbleButton">Apply Wobble</button>
         </div>
-        
-        <div class="form-group">
-            <label>
-                <input type="checkbox" id="removeAboveThreshold">
-                Remove components above threshold (instead of below)
-            </label>
-        </div>
-        
-        <button id="applyThresholdButton">Apply Threshold Filter</button>
-      </div>    
-
-      <div class="control-group">
-        <h3>Amplitude Derivative</h3>
-        <p class="description">
-            Replaces each frequency bin's amplitude with the difference between it and
-            the previous bin, creating spectral edge detection effects.
-        </p>
-        
-        <div class="slider-container">
-            <label for="derivateMultiplier">Derivative multiplier:</label>
-            <input type="range" id="derivateMultiplier" min="0.1" max="10.0" step="0.1" value="1.0">
-            <span id="derivateMultiplierDisplay">1.0</span>
-        </div>
-        
-        <button id="applyDerivateButton">Apply Amplitude Derivative</button>
       </div>
-
-      <div class="control-group">
-        <h3>Keep Peaks</h3>
-        <p class="description">
-            Keeps only the local maxima in the frequency spectrum, zeroing out all
-            other bins. Useful for isolating prominent frequency components.
-        </p>
-        
-        <button id="applyKeepPeaksButton">Apply Keep Peaks Filter</button>
-      </div>  
-      
-      <div class="control-group">
-        <!--
-        <div class="new-feature-badge">NEW!</div>
-        -->
-        <h3>Frequency Spectrum Split</h3>
-        <p class="description">
-          Split the audio into multiple files, each containing only specific frequency bins.
-          This allows separation of frequency components across multiple files.
-        </p>
-        
-        <div class="split-controls">
-          <div class="form-group">
-            <label for="splitBaseName">Base Filename:</label>
-            <input type="text" id="splitBaseName" value="split" class="text-input">
+      <div class="tab-content" id="threshold-tab">        
+        <div class="control-group">
+          <p class="description">
+              Removes frequency components based on their amplitude, acting as either
+              a noise gate (remove below) or a peak limiter (remove above).
+          </p>
+          
+          <div class="slider-container">
+              <label for="thresholdLevel">Threshold level:</label>
+              <input type="range" id="thresholdLevel" min="0.01" max="5.0" step="0.01" value="1.0">
+              <span id="thresholdLevelDisplay">1.0</span>
           </div>
           
           <div class="form-group">
-            <label for="splitNumParts">Number of Parts:</label>
-            <input type="number" id="splitNumParts" min="2" max="16" value="2" class="number-input">
+              <label>
+                  <input type="checkbox" id="removeAboveThreshold">
+                  Remove components above threshold (instead of below)
+              </label>
           </div>
           
-          <div class="form-group">
-            <label for="splitGroupSize">Group Size:</label>
-            <input type="number" id="splitGroupSize" min="1" max="32" value="1" class="number-input">
-            <div class="help-text">Number of consecutive frequency bins to group together</div>
+          <button id="applyThresholdButton">Apply Threshold Filter</button>
+        </div>    
+      </div>
+      <div class="tab-content" id="derivate-tab">
+        <div class="control-group">
+          <p class="description">
+              Replaces each frequency bin's amplitude with the difference between it and
+              the previous bin, creating spectral edge detection effects.
+          </p>
+          
+          <div class="slider-container">
+              <label for="derivateMultiplier">Derivative multiplier:</label>
+              <input type="range" id="derivateMultiplier" min="0.1" max="10.0" step="0.1" value="1.0">
+              <span id="derivateMultiplierDisplay">1.0</span>
           </div>
+          
+          <button id="applyDerivateButton">Apply Amplitude Derivative</button>
         </div>
-        
-        <button id="applySplitButton" class="success-button">Split & Download Parts</button>
-      </div>      
-      
-      <div class="control-group">
-        <h3>Frequency Filters</h3>
-        <p class="description">Apply various filters to remove or isolate specific frequency ranges in your audio.</p>
-        <div class="filter-controls">
-          <div>
-            <label for="filterType">Filter Type:</label>
-            <select id="filterType">
-              <option value="lowpass">Lowpass</option>
-              <option value="highpass">Highpass</option>
-              <option value="bandpass">Bandpass</option>
-            </select>
-          </div>
+      </div>
+      <div class="tab-content" id="keep-peaks-tab">    
+        <div class="control-group">
+          <p class="description">
+              Keeps only the local maxima in the frequency spectrum, zeroing out all
+              other bins. Useful for isolating prominent frequency components.
+          </p>
           
-          <div class="filter-sliders">
-            <div class="slider-container">
-              <label for="cutoffLow">Low Cutoff:</label>
-              <input type="range" id="cutoffLow" min="20" max="20000" step="1" value="1000">
-              <span id="cutoffLowValue">1000 Hz</span>
+          <button id="applyKeepPeaksButton">Apply Keep Peaks Filter</button>
+        </div>  
+      </div>
+      <div class="tab-content" id="split-tab"> 
+        <div class="control-group">
+          <!--
+          <div class="new-feature-badge">NEW!</div>
+          -->
+          <p class="description">
+            Split the audio into multiple files, each containing only specific frequency bins.
+            This allows separation of frequency components across multiple files.
+          </p>
+          
+          <div class="split-controls">
+            <div class="form-group">
+              <label for="splitBaseName">Base Filename:</label>
+              <input type="text" id="splitBaseName" value="split" class="text-input">
             </div>
             
-            <div class="slider-container" id="highCutoffContainer" style="display: none;">
-              <label for="cutoffHigh">High Cutoff:</label>
-              <input type="range" id="cutoffHigh" min="20" max="20000" step="1" value="5000">
-              <span id="cutoffHighValue">5000 Hz</span>
+            <div class="form-group">
+              <label for="splitNumParts">Number of Parts:</label>
+              <input type="number" id="splitNumParts" min="2" max="16" value="2" class="number-input">
+            </div>
+            
+            <div class="form-group">
+              <label for="splitGroupSize">Group Size:</label>
+              <input type="number" id="splitGroupSize" min="1" max="32" value="1" class="number-input">
+              <div class="help-text">Number of consecutive frequency bins to group together</div>
             </div>
           </div>
           
-          <button id="applyFilterButton">Apply Filter</button>
-        </div>
+          <button id="applySplitButton" class="success-button">Split & Download Parts</button>
+        </div>        
       </div>
-      
-      <div class="control-group" style="visibility: hidden;">
-        <h3>Phase Shift</h3>
-        <p class="description">Shifts the phase of all frequency components by the same amount. This often has subtle effects on the sound.</p>
-        <div class="slider-container">
-          <input type="range" id="phaseSlider" min="-3.14" max="3.14" step="0.01" value="0">
-          <span id="phaseValue">0 rad</span>
-        </div>
-        <button id="applyPhaseButton">Apply Phase Shift</button>
-      </div>      
-      
+      <div class="tab-content" id="filters-tab"> 
+        <div class="control-group">
+          <h3>Frequency Filters</h3>
+          <p class="description">Apply various filters to remove or isolate specific frequency ranges in your audio.</p>
+          <div class="filter-controls">
+            <div>
+              <label for="filterType">Filter Type:</label>
+              <select id="filterType">
+                <option value="lowpass">Lowpass</option>
+                <option value="highpass">Highpass</option>
+                <option value="bandpass">Bandpass</option>
+              </select>
+            </div>
+            
+            <div class="filter-sliders">
+              <div class="slider-container">
+                <label for="cutoffLow">Low Cutoff:</label>
+                <input type="range" id="cutoffLow" min="20" max="20000" step="1" value="1000">
+                <span id="cutoffLowValue">1000 Hz</span>
+              </div>
+              
+              <div class="slider-container" id="highCutoffContainer" style="display: none;">
+                <label for="cutoffHigh">High Cutoff:</label>
+                <input type="range" id="cutoffHigh" min="20" max="20000" step="1" value="5000">
+                <span id="cutoffHighValue">5000 Hz</span>
+              </div>
+            </div>
+            
+            <button id="applyFilterButton">Apply Filter</button>
+          </div>
+        </div>  
+      </div>
+    </div>
     </div>
     
     <div class="footer">
@@ -438,7 +448,6 @@ Do not try to understand what happens - even the programmer can't explain it in 
         document.getElementById('downloadButton').addEventListener('click', downloadAudio);
         document.getElementById('applyPowerButton').addEventListener('click', applyPower);
         document.getElementById('applyFilterButton').addEventListener('click', applyFilter);
-        document.getElementById('applyPhaseButton').addEventListener('click', applyPhase);
         document.getElementById('applyPhaseMultiplyButton').addEventListener('click', applyPhaseMultiply);
         document.getElementById('applySwapBinsButton').addEventListener('click', applySwapBins);
         document.getElementById('applyChannelSwapButton').addEventListener('click', applyChannelSwap);
@@ -468,10 +477,6 @@ Do not try to understand what happens - even the programmer can't explain it in 
         
         document.getElementById('cutoffHigh').addEventListener('input', function() {
           document.getElementById('cutoffHighValue').textContent = `${this.value} Hz`;
-        });
-        
-        document.getElementById('phaseSlider').addEventListener('input', function() {
-          document.getElementById('phaseValue').textContent = `${this.value} rad`;
         });
         
         document.getElementById('phaseMultiplySlider').addEventListener('input', function() {
@@ -512,7 +517,9 @@ Do not try to understand what happens - even the programmer can't explain it in 
 
         document.getElementById('derivateMultiplier').addEventListener('input', function() {
           document.getElementById('derivateMultiplierDisplay').textContent = this.value;
-        });        
+        });     
+        
+        setupTabs();
         
         // Draw empty grid on the canvas
         drawEmptySpectrum();
@@ -524,6 +531,27 @@ Do not try to understand what happens - even the programmer can't explain it in 
         console.error("Initialization error:", error);
       }
     }
+
+  // Tab switching functionality
+  function setupTabs() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+  
+    tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      // Remove active class from all buttons and contents
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      tabContents.forEach(content => content.classList.remove('active'));
+      
+      // Add active class to current button
+      button.classList.add('active');
+      
+      // Show the corresponding tab content
+      const tabId = button.getAttribute('data-tab');
+      document.getElementById(`${tabId}-tab`).classList.add('active');
+    });
+    });
+  }    
     
     // Unified function to handle a selected file (from input or drag)
     function handleSelectedFile(file) {
@@ -610,8 +638,10 @@ Do not try to understand what happens - even the programmer can't explain it in 
         }
         
         // Show controls
-        document.querySelector('.audio-controls').style.display = 'flex';
-        document.querySelector('.controls').style.display = 'grid';
+        document.querySelector('.main-controls').style.display = 'block';
+        document.querySelector('.operations-tabs').style.display = 'block'; 
+        //document.querySelector('.audio-controls').style.display = 'flex';
+        //document.querySelector('.controls').style.display = 'grid';
         
         // Update the audio player
         updateStatus('Preparing audio player...');
@@ -697,25 +727,6 @@ Do not try to understand what happens - even the programmer can't explain it in 
       } catch (error) {
         updateStatus(`Error applying filter: ${error.message}`, true);
         console.error("Error applying filter:", error);
-      }
-    }
-    
-    function applyPhase() {
-      try {
-        if (!audioProcessor) {
-          updateStatus('No audio loaded', true);
-          return;
-        }
-        
-        const phase = parseFloat(document.getElementById('phaseSlider').value);
-        updateStatus(`Applying phase shift of ${phase} radians...`);
-        audioProcessor.apply_phase_shift(phase);
-        
-        drawSpectrum();
-        updateStatus(`Applied phase shift of ${phase} radians`, false, true);
-      } catch (error) {
-        updateStatus(`Error applying phase shift: ${error.message}`, true);
-        console.error("Error applying phase shift:", error);
       }
     }
     
