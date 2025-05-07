@@ -1,0 +1,26 @@
+[workspace]
+members = [
+    "lib",
+    "cli",
+    "web"
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "FFT audio processing library and tools"
+repository = "https://github.com/rogerkl/mammut-fft"
+license = "MIT"
+
+[workspace.dependencies]
+mammut_fft_lib = { path = "lib" }
+realfft = "3.3.0"
+hound = "3.5.0"
+num-complex = "0.4.3"
+clap = { version = "4.3.0", features = ["derive"] }
+rustyline = "15.0.0"
+console_error_panic_hook = "0.1.7"
+wasm-bindgen = "0.2.87"
+rand = "0.9.1"

@@ -1,0 +1,14 @@
+[package]
+name = "mammut_fft_cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[dependencies]
+mammut_fft_lib = { workspace = true }
+clap = { workspace = true }
+rustyline = { workspace = true }
+hound = { workspace = true } # Needed for file operations in CLI

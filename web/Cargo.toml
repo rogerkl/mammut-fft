@@ -1,0 +1,44 @@
+# Update to web/Cargo.toml to add rand crate with wasm support
+
+[package]
+name = "mammut_fft_web"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+mammut_fft_lib = { workspace = true, features = ["wasm"] }
+wasm-bindgen = { version = "0.2.87", features = ["serde-serialize"] }
+js-sys = "0.3.64"
+web-sys = { version = "0.3.64", features = [
+    "File",
+    "Blob",
+    "CanvasRenderingContext2d",
+    "Document",
+    "Element",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "Window",
+    "console",
+    "AudioContext",
+    "AudioBuffer",
+    "AudioBufferSourceNode",
+    "AudioDestinationNode",
+    "AudioNode",
+    "FileReader",
+    "Event",
+    "EventTarget",
+] }
+wasm-bindgen-futures = "0.4.37"
+console_error_panic_hook = "0.1.7"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde-wasm-bindgen = "0.6.5"
+rand = { version = "0.9.1" }
+getrandom = { version = "0.3.2", features = ["wasm_js"]}

@@ -1,0 +1,421 @@
+/* Dark Mode Theme for FFT Audio Processor */
+
+:root {
+  --bg-color: #121212;
+  --card-bg: #1e1e1e;
+  --card-bg-hover: #252525;
+  --text-primary: #e0e0e0;
+  --text-secondary: #aaaaaa;
+  --border-color: #333333;
+  --accent-color: #4f9eff;
+  --accent-hover: #3d7dcf;
+  --success-color: #4CAF50;
+  --success-bg: rgba(76, 175, 80, 0.1);
+  --error-color: #f44336;
+  --error-bg: rgba(244, 67, 54, 0.1);
+  --canvas-bg: #2a2a2a;
+  --slider-track: #444444;
+  --slider-thumb: #6fb5ff;
+}
+
+/* Global styles */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1800px;
+  margin: 0 auto;
+  background-color: var(--card-bg);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+h1, h2, h3, h4 {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 32px;
+}
+
+h3 {
+  margin-top: 0;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+  font-size: 18px;
+}
+
+/* Status message */
+.status {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-left: 4px solid var(--accent-color);
+  padding: 12px 18px;
+  margin: 20px 0;
+  font-size: 14px;
+  color: var(--text-primary);
+  border-radius: 0 4px 4px 0;
+  transition: all 0.3s ease;
+}
+
+.status.error {
+  background-color: var(--error-bg);
+  border-left-color: var(--error-color);
+  color: var(--error-color);
+}
+
+.status.success {
+  background-color: var(--success-bg);
+  border-left-color: var(--success-color);
+  color: var(--success-color);
+}
+
+/* Audio controls */
+.audio-controls {
+  margin: 25px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 15px;
+  border-radius: 8px;
+}
+
+#audioPlayer {
+  width: 70%;
+  height: 40px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  outline: none;
+}
+
+/* Canvas visualization */
+.visualization {
+  margin: 25px 0;
+}
+
+canvas {
+  width: 100%;
+  height: 300px;
+  background-color: var(--canvas-bg);
+  border-radius: 8px;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Control panels */
+.controls {
+  margin: 25px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.control-group {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 15px;
+  background-color: rgba(255, 255, 255, 0.03);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.control-group:hover {
+  background-color: var(--card-bg-hover);
+  box-shadow: 0 0 0 1px var(--accent-color);
+}
+
+/* New feature indicator */
+.new-feature-badge {
+  position: absolute;
+  top: 10px;
+  right: -30px;
+  background-color: var(--success-color);
+  color: white;
+  padding: 5px 30px;
+  transform: rotate(45deg);
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Description text */
+.description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 10px 0 15px 0;
+  line-height: 1.4;
+}
+
+/* Sliders */
+.slider-container {
+  margin: 15px 0;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  background-color: var(--slider-track);
+  border-radius: 3px;
+  outline: none;
+  margin: 12px 0;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background-color: var(--slider-thumb);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background-color: var(--slider-thumb);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+input[type="range"]:active::-webkit-slider-thumb,
+input[type="range"]:hover::-webkit-slider-thumb {
+  background-color: var(--accent-color);
+}
+
+input[type="range"]:active::-moz-range-thumb,
+input[type="range"]:hover::-moz-range-thumb {
+  background-color: var(--accent-color);
+}
+
+/* Value display for sliders */
+span[id$="Value"] {
+  font-size: 14px;
+  color: var(--accent-color);
+  font-weight: 500;
+  margin-left: 10px;
+}
+
+/* Form elements */
+input[type="file"] {
+  background-color: rgba(0, 0, 0, 0.2);
+  color: var(--text-primary);
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  margin-right: 10px;
+  display: none; /* Hide the default file input */
+}
+
+.file-input-wrapper {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.custom-file-button {
+  padding: 10px 16px;
+  background-color: #444444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.custom-file-button:hover {
+  background-color: #555555;
+}
+
+select {
+  padding: 8px 12px;
+  background-color: rgba(0, 0, 0, 0.2);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+
+select:focus {
+  border-color: var(--accent-color);
+}
+
+label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Buttons */
+button {
+  padding: 10px 16px;
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 10px;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+button:hover {
+  background-color: var(--accent-hover);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  background-color: var(--border-color);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+button.success-button {
+  background-color: var(--success-color);
+}
+
+button.success-button:hover {
+  background-color: #3d9140;
+}
+
+.filter-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Footer */
+.footer {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .controls {
+    grid-template-columns: 1fr;
+  }
+  
+  .audio-controls {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  #audioPlayer {
+    width: 100%;
+  }
+  
+  .file-input-wrapper {
+    flex-direction: column;
+  }
+  .split-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 15px 0;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .text-input, .number-input {
+    padding: 8px;
+    background-color: rgba(0, 0, 0, 0.2);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+  }
+  
+  .help-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }  
+}
+
+.custom-file-button#openAudioButton {
+  padding: 12px 24px;  /* Larger padding for better visibility */
+  background-color: var(--accent-color);  /* Use accent color for emphasis */
+  color: white;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: background-color 0.2s, transform 0.1s;
+  min-width: 140px;  /* Ensure consistent width */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);  /* Subtle shadow for depth */
+}
+
+.custom-file-button#openAudioButton:hover {
+  background-color: var(--accent-hover);
+}
+
+.custom-file-button#openAudioButton:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Ensure the upload section is properly styled for a single button */
+.upload-section {
+  margin: 15px 0;
+  padding: 10px 10px;
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  text-align: center;
+  transition: border-color 0.3s, background-color 0.3s;
+  background-color: rgba(255, 255, 255, 0.02);  /* Slight highlight */
+}
+
+.upload-section:hover {
+  border-color: var(--accent-color);
+  background-color: rgba(255, 255, 255, 0.04);  /* Slightly lighter on hover */
+}
+
+/* Ensure proper description style */
+.upload-section label {
+  display: block;
+  margin-bottom: 15px;
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+/* Style for the file info display */
+#fileInfo {
+  margin-top: 15px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  display: inline-block;
+}
