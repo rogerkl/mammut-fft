@@ -104,6 +104,8 @@ Implement more operations, either from the original application or other ideas t
 
 The spectrum view does not show anything for large files
 
+NB! Even though the various operations are mostly based on whats in the original program, they are mostly made based on the description of the operations and may not be exactly the same or give the samme result, could be programming errors as well ...
+
 ## Live Version
 
 A working version can be found at https://anatemno.org/projects/mammut-fft/
