@@ -23,7 +23,6 @@ struct AudioInfoJs {
     fft_size: usize,
     time_data: Option<TimeDataInfoJs>,
     fft_data: Option<FFTDataInfoJs>,
-    peak_frequencies: Option<Vec<PeakFrequencyJs>>,
 }
 
 #[derive(Serialize)]
@@ -38,14 +37,6 @@ struct FFTDataInfoJs {
     num_channels: usize,
     complex_values_per_channel: usize,
     frequency_resolution: f64,
-}
-
-#[derive(Serialize)]
-struct PeakFrequencyJs {
-    channel: usize,
-    frequency: f64,
-    bin: usize,
-    amplitude: f64,
 }
 
 #[wasm_bindgen]
@@ -127,17 +118,6 @@ impl WasmAudioProcessor {
                 complex_values_per_channel: fd.complex_values_per_channel,
                 frequency_resolution: fd.frequency_resolution,
             }),
-            peak_frequencies: info.peak_frequencies.map(|peaks| {
-                peaks
-                    .iter()
-                    .map(|p| PeakFrequencyJs {
-                        channel: p.channel,
-                        frequency: p.frequency,
-                        bin: p.bin,
-                        amplitude: p.amplitude,
-                    })
-                    .collect()
-            }),
         };
 
         serde_wasm_bindgen::to_value(&js_info).unwrap_or(JsValue::null())
@@ -146,7 +126,7 @@ impl WasmAudioProcessor {
     // Get spectrum data for visualization
     #[wasm_bindgen]
     pub fn get_spectrum_data(&self, channel_index: usize) -> Result<Float32Array> {
-        if let Some(fft_data) = self.processor.fft_polar_data() {
+        if let Some(fft_data) = self.processor.fft_data() {
             if channel_index >= fft_data.len() {
                 return Err(format!(
                     "Channel index {} out of bounds (max: {})",
@@ -158,9 +138,9 @@ impl WasmAudioProcessor {
             let channel_data = &fft_data[channel_index];
             let result = Float32Array::new_with_length(channel_data.len() as u32);
 
-            // Copy amplitude data (real part)
+            // Copy amplitude data
             for (i, value) in channel_data.iter().enumerate() {
-                result.set_index(i as u32, value.re as f32);
+                result.set_index(i as u32, value.to_polar().0 as f32);
             }
 
             Ok(result)

@@ -26,8 +26,8 @@ fn print_help() {
     println!(
         "  swapchannels <repeat>          - Randomly swap bins between channels (stereo effects)"
     );
-    println!("  spectrumshift <shift_hz>        - Shift the frequency spectrum up or down by the specified amount in Hz");
-    println!("  stretch <exponent>              - Apply non-linear frequency stretching with the specified exponent");
+    println!("  spectrumshift <shift_hz>       - Shift the frequency spectrum up or down by the specified amount in Hz");
+    println!("  stretch <exponent>             - Apply non-linear frequency stretching with the specified exponent");
     println!(
         "  wobble <frequency> <amplitude> - Apply a wobbling effect to the frequency spectrum"
     );
@@ -43,10 +43,10 @@ fn print_help() {
     //println!("  mix <weight1> <weight2> ...     - Mix channels with specified weights");
     println!("  split <filename> <num_parts> [group_size] - Split frequency spectrum into multiple files");
     println!(
-        "  info                         - Display information about the loaded audio and FFT data"
+        "  info                           - Display information about the loaded audio and FFT data"
     );
-    println!("  help                         - Show this help message");
-    println!("  quit                         - Exit the program");
+    println!("  help                           - Show this help message");
+    println!("  quit                           - Exit the program");
 }
 
 /// Process a user command.
@@ -652,19 +652,6 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
                     "Nyquist frequency: {}",
                     utils::format_frequency(info.sample_rate as f64 / 2.0)
                 );
-            }
-
-            if let Some(peaks) = &info.peak_frequencies {
-                println!("\n----- Peak Frequencies -----");
-                for peak in peaks {
-                    println!(
-                        "Channel {}: Peak at {} (bin {}, amplitude: {:.4})",
-                        peak.channel,
-                        utils::format_frequency(peak.frequency),
-                        peak.bin,
-                        peak.amplitude
-                    );
-                }
             }
         }
         "help" => print_help(),

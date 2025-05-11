@@ -17,8 +17,8 @@ pub struct AudioProcessor {
     channels: u16,
     /// FFT data in cartesian form (real/imaginary) for each channel
     fft_data: Option<Vec<Vec<Complex64>>>,
-    /// FFT data in polar form (amplitude/phase) for each channel
-    fft_polar_data: Option<Vec<Vec<Complex64>>>,
+    /// Temporary copy of data for split operation
+    tmp_fft_data: Option<Vec<Vec<Complex64>>>,
     /// Time domain audio data for each channel
     time_data: Option<Vec<Vec<f64>>>,
     /// FFT forward transform planner
@@ -40,7 +40,6 @@ impl std::fmt::Debug for AudioProcessor {
             .field("sample_rate", &self.sample_rate)
             .field("channels", &self.channels)
             .field("fft_data", &self.fft_data)
-            .field("fft_polar_data", &self.fft_polar_data)
             .field("time_data", &self.time_data)
             .field("fft_r2c", &format_args!("<FFT Planner>"))
             .field("fft_c2r", &format_args!("<IFFT Planner>"))
@@ -56,8 +55,8 @@ impl AudioProcessor {
             sample_rate: 0,
             channels: 0,
             fft_data: None,
-            fft_polar_data: None,
             time_data: None,
+            tmp_fft_data: None,
             fft_r2c: None,
             fft_c2r: None,
             fft_size: 0,
@@ -87,7 +86,7 @@ impl AudioProcessor {
 
     /// Check if frequency domain data is available.
     pub fn has_frequency_data(&self) -> bool {
-        self.fft_polar_data.is_some() || self.fft_data.is_some()
+        self.fft_data.is_some()
     }
 
     /// Set audio parameters and time domain data.
@@ -126,7 +125,6 @@ impl AudioProcessor {
 
         // Clear existing FFT data
         self.fft_data = None;
-        self.fft_polar_data = None;
 
         Ok(())
     }
@@ -136,9 +134,9 @@ impl AudioProcessor {
         self.time_data.as_ref()
     }
 
-    /// Get a reference to the FFT data in polar form.
-    pub fn fft_polar_data(&self) -> Option<&Vec<Vec<Complex64>>> {
-        self.fft_polar_data.as_ref()
+    /// Get a reference to the FFT data
+    pub fn fft_data(&self) -> Option<&Vec<Vec<Complex64>>> {
+        self.fft_data.as_ref()
     }
 
     /// Apply a power function to the amplitude of the FFT data.
@@ -146,30 +144,25 @@ impl AudioProcessor {
     /// This raises each amplitude value to the specified power while
     /// preserving the phase information.
     pub fn apply_pow(&mut self, exponent: f64) -> Result<()> {
-        if let Some(polar_data_channels) = &mut self.fft_polar_data {
+        if let Some(data_channels) = &mut self.fft_data {
             // Process each channel independently
-            for channel_polar_data in polar_data_channels.iter_mut() {
-                for i in 0..channel_polar_data.len() {
+            for channel_data in data_channels.iter_mut() {
+                for i in 0..channel_data.len() {
                     // Get the current amplitude (real part)
-                    let amplitude = channel_polar_data[i].re;
+
+                    let (amplitude, phase) = channel_data[i].to_polar();
 
                     // Raise amplitude to the specified power
                     // Amplitude in polar form is always non-negative
                     let powered_amplitude = amplitude.powf(exponent);
 
                     // Update amplitude while preserving phase
-                    channel_polar_data[i] =
-                        Complex64::new(powered_amplitude, channel_polar_data[i].im);
+                    channel_data[i] = Complex64::from_polar(powered_amplitude, phase);
                 }
             }
-
-            // After modifying polar data, clear the cartesian representation
-            // It will be recalculated when needed
-            self.fft_data = None;
-
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file first.".to_string())
+            Err("No FFT data available. Load a file first.".to_string())
         }
     }
 
@@ -198,6 +191,8 @@ impl AudioProcessor {
             let num_channels = time_data_channels.len();
             let mut fft_data_channels = Vec::with_capacity(num_channels);
 
+            self.max_amplitude = 0.0;
+
             // Process each channel independently
             for channel_idx in 0..num_channels {
                 let channel_data = &time_data_channels[channel_idx];
@@ -219,104 +214,35 @@ impl AudioProcessor {
                     return Err("FFT planner not initialized".to_string());
                 }
 
+                //Calculate max
+                for c in &complex_output {
+                    let (mut amplitude, _) = c.to_polar();
+                    amplitude = amplitude.abs();
+                    if amplitude > self.max_amplitude {
+                        self.max_amplitude = amplitude;
+                    }
+                }
                 // Store the FFT data for this channel
                 fft_data_channels.push(complex_output);
+            }
+
+            // Normalize amplitudes based on max for all channels
+            if self.max_amplitude > 0.0 {
+                let scale = 1. / self.max_amplitude;
+                for channel_idx in 0..num_channels {
+                    let data = &mut fft_data_channels[channel_idx];
+                    for i in 0..data.len() {
+                        data[i] = data[i].scale(scale);
+                    }
+                }
             }
 
             // Store all channels' FFT data
             self.fft_data = Some(fft_data_channels);
 
-            // Convert to polar form (amplitude and phase)
-            self.convert_to_polar()?;
-
             Ok(())
         } else {
             Err("No time data available for FFT".to_string())
-        }
-    }
-
-    /// Convert cartesian FFT data to polar form (amplitude and phase).
-    ///
-    /// This representation makes it easier to manipulate the frequency data.
-    pub fn convert_to_polar(&mut self) -> Result<()> {
-        if let Some(fft_data_channels) = &self.fft_data {
-            let num_channels = fft_data_channels.len();
-            let mut polar_data_channels = Vec::with_capacity(num_channels);
-
-            self.max_amplitude = 0.0;
-
-            // Process each channel independently
-
-            // First pass: Convert to polar and find max amplitude for this channel
-            for channel_idx in 0..num_channels {
-                let channel_fft_data = &fft_data_channels[channel_idx];
-                let mut polar_data = Vec::with_capacity(channel_fft_data.len());
-
-                for &complex_val in channel_fft_data.iter() {
-                    let (r, theta) = complex_val.to_polar();
-                    polar_data.push(Complex64::new(r, theta));
-
-                    if r > self.max_amplitude {
-                        self.max_amplitude = r;
-                    }
-                }
-
-                // Store this channel's polar data
-                polar_data_channels.push(polar_data);
-            }
-
-            // Second pass: Normalize amplitudes based on max for all channels
-            for channel_idx in 0..num_channels {
-                let polar_data = &mut polar_data_channels[channel_idx];
-
-                // Second pass: Normalize amplitudes for this channel
-                if self.max_amplitude > 0.0 {
-                    for i in 0..polar_data.len() {
-                        // Normalize the amplitude (real part) while keeping the phase (imaginary part)
-                        let normalized_amplitude = polar_data[i].re / self.max_amplitude;
-                        polar_data[i] = Complex64::new(normalized_amplitude, polar_data[i].im);
-                    }
-                }
-            }
-
-            // Store all channels' normalized polar data
-            self.fft_polar_data = Some(polar_data_channels);
-
-            Ok(())
-        } else {
-            Err("No FFT data available for polar conversion".to_string())
-        }
-    }
-
-    /// Convert polar FFT data back to cartesian form.
-    ///
-    /// This is needed before performing the inverse FFT.
-    pub fn convert_to_cartesian(&mut self) -> Result<()> {
-        if let Some(polar_data_channels) = &self.fft_polar_data {
-            let num_channels = polar_data_channels.len();
-            let mut cartesian_data_channels = Vec::with_capacity(num_channels);
-
-            // Process each channel independently
-            for channel_idx in 0..num_channels {
-                let channel_polar_data = &polar_data_channels[channel_idx];
-                let mut cartesian_data = Vec::with_capacity(channel_polar_data.len());
-
-                for &polar_val in channel_polar_data.iter() {
-                    // polar_val.re is amplitude, polar_val.im is phase
-                    let complex_val = Complex64::from_polar(polar_val.re, polar_val.im);
-                    cartesian_data.push(complex_val);
-                }
-
-                // Store this channel's cartesian data
-                cartesian_data_channels.push(cartesian_data);
-            }
-
-            // Store all channels' cartesian data
-            self.fft_data = Some(cartesian_data_channels);
-
-            Ok(())
-        } else {
-            Err("No polar data available for cartesian conversion".to_string())
         }
     }
 
@@ -325,11 +251,6 @@ impl AudioProcessor {
     /// This ensures the FFT data is properly formatted for a real FFT,
     /// particularly handling the DC and Nyquist components correctly.
     pub fn prepare_for_ifft(&mut self) -> Result<()> {
-        // First, if we have polar data, convert back to cartesian
-        if self.fft_polar_data.is_some() && self.fft_data.is_none() {
-            self.convert_to_cartesian()?;
-        }
-
         if let Some(fft_data_channels) = &mut self.fft_data {
             // Process each channel independently
             for channel_data in fft_data_channels.iter_mut() {
@@ -346,7 +267,6 @@ impl AudioProcessor {
                 }
             }
         }
-
         Ok(())
     }
 
@@ -379,11 +299,6 @@ impl AudioProcessor {
 
     /// Perform the inverse FFT to convert frequency domain data back to time domain.
     pub fn perform_ifft(&mut self) -> Result<()> {
-        // First, if we have polar data, convert back to cartesian
-        if self.fft_polar_data.is_some() && self.fft_data.is_none() {
-            self.convert_to_cartesian()?;
-        }
-
         // Prepare the data for a real IFFT
         self.prepare_for_ifft()?;
 
@@ -441,38 +356,12 @@ impl AudioProcessor {
             frequency_resolution: self.sample_rate as f64 / self.fft_size as f64,
         });
 
-        let peak_frequencies = if let Some(polar_data) = &self.fft_polar_data {
-            let mut peaks = Vec::with_capacity(polar_data.len());
-
-            for (channel_idx, channel_data) in polar_data.iter().enumerate() {
-                if let Some((peak_bin, &peak_value)) =
-                    channel_data.iter().enumerate().max_by(|(_, a), (_, b)| {
-                        a.re.partial_cmp(&b.re).unwrap_or(std::cmp::Ordering::Equal)
-                    })
-                {
-                    let peak_freq =
-                        peak_bin as f64 * self.sample_rate as f64 / self.fft_size as f64;
-                    peaks.push(PeakFrequency {
-                        channel: channel_idx,
-                        frequency: peak_freq,
-                        bin: peak_bin,
-                        amplitude: peak_value.re,
-                    });
-                }
-            }
-
-            Some(peaks)
-        } else {
-            None
-        };
-
         AudioInfo {
             sample_rate: self.sample_rate,
             channels: self.channels,
             fft_size: self.fft_size,
             time_data: time_data_info,
             fft_data: fft_data_info,
-            peak_frequencies,
         }
     }
 
@@ -480,8 +369,8 @@ impl AudioProcessor {
     ///
     /// This attenuates frequencies above the cutoff frequency.
     pub fn apply_lowpass(&mut self, cutoff_hz: f64) -> Result<()> {
-        if let Some(polar_data_channels) = &mut self.fft_polar_data {
-            let num_channels = polar_data_channels.len();
+        if let Some(data_channels) = &mut self.fft_data {
+            let num_channels = data_channels.len();
 
             // Calculate the bin index corresponding to the cutoff frequency
             let cutoff_bin =
@@ -489,21 +378,17 @@ impl AudioProcessor {
 
             // Process each channel
             for channel_idx in 0..num_channels {
-                let channel_data = &mut polar_data_channels[channel_idx];
+                let channel_data = &mut data_channels[channel_idx];
 
                 // Apply filter: zero out amplitudes above cutoff
                 for bin in cutoff_bin.min(channel_data.len())..channel_data.len() {
-                    // Set amplitude to 0 while preserving phase
-                    channel_data[bin] = Complex64::new(0.0, channel_data[bin].im);
+                    channel_data[bin] = Complex64::new(0.0, 0.0);
                 }
             }
 
-            // Clear cartesian representation as it's now invalid
-            self.fft_data = None;
-
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file first.".to_string())
+            Err("No FFT data available. Load a file first.".to_string())
         }
     }
 
@@ -511,8 +396,8 @@ impl AudioProcessor {
     ///
     /// This attenuates frequencies below the cutoff frequency.
     pub fn apply_highpass(&mut self, cutoff_hz: f64) -> Result<()> {
-        if let Some(polar_data_channels) = &mut self.fft_polar_data {
-            let num_channels = polar_data_channels.len();
+        if let Some(data_channels) = &mut self.fft_data {
+            let num_channels = data_channels.len();
 
             // Calculate the bin index corresponding to the cutoff frequency
             let cutoff_bin =
@@ -520,21 +405,17 @@ impl AudioProcessor {
 
             // Process each channel
             for channel_idx in 0..num_channels {
-                let channel_data = &mut polar_data_channels[channel_idx];
+                let channel_data = &mut data_channels[channel_idx];
 
                 // Apply filter: zero out amplitudes below cutoff
                 for bin in 0..cutoff_bin.min(channel_data.len()) {
-                    // Set amplitude to 0 while preserving phase
-                    channel_data[bin] = Complex64::new(0.0, channel_data[bin].im);
+                    channel_data[bin] = Complex64::new(0.0, 0.0);
                 }
             }
 
-            // Clear cartesian representation as it's now invalid
-            self.fft_data = None;
-
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file first.".to_string())
+            Err("No FFT data available. Load a file first.".to_string())
         }
     }
 
@@ -546,8 +427,8 @@ impl AudioProcessor {
             return Err("Low cutoff frequency must be less than high cutoff frequency".to_string());
         }
 
-        if let Some(polar_data_channels) = &mut self.fft_polar_data {
-            let num_channels = polar_data_channels.len();
+        if let Some(data_channels) = &mut self.fft_data {
+            let num_channels = data_channels.len();
 
             // Calculate the bin indices corresponding to the cutoff frequencies
             let low_bin =
@@ -557,51 +438,45 @@ impl AudioProcessor {
 
             // Process each channel
             for channel_idx in 0..num_channels {
-                let channel_data = &mut polar_data_channels[channel_idx];
+                let channel_data = &mut data_channels[channel_idx];
 
                 // Apply filter: zero out amplitudes outside the band
                 for bin in 0..channel_data.len() {
                     if bin < low_bin || bin > high_bin {
-                        // Set amplitude to 0 while preserving phase
-                        channel_data[bin] = Complex64::new(0.0, channel_data[bin].im);
+                        channel_data[bin] = Complex64::new(0.0, 0.0);
                     }
                 }
             }
 
-            // Clear cartesian representation as it's now invalid
-            self.fft_data = None;
-
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file first.".to_string())
+            Err("No FFT data available. Load a file first.".to_string())
         }
-    }
+    }   
 
     /// Apply phase shift to all frequencies.
     ///
     /// This shifts the phase of all frequency components by the specified amount in radians.
     pub fn apply_phase_shift(&mut self, phase_shift: f64) -> Result<()> {
-        if let Some(polar_data_channels) = &mut self.fft_polar_data {
-            let num_channels = polar_data_channels.len();
+        if let Some(data_channels) = &mut self.fft_data {
+            let num_channels = data_channels.len();
 
             // Process each channel
             for channel_idx in 0..num_channels {
-                let channel_data = &mut polar_data_channels[channel_idx];
+                let channel_data = &mut data_channels[channel_idx];
 
                 // Apply phase shift to all bins
                 for bin in 0..channel_data.len() {
                     // Add phase shift while preserving amplitude
-                    let new_phase = channel_data[bin].im + phase_shift;
-                    channel_data[bin] = Complex64::new(channel_data[bin].re, new_phase);
+                    let (amp, phase) = channel_data[bin].to_polar();
+                    channel_data[bin] =
+                        Complex64::from_polar(amp, Self::normalize_phase(phase + phase_shift));
                 }
             }
 
-            // Clear cartesian representation as it's now invalid
-            self.fft_data = None;
-
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file first.".to_string())
+            Err("No FFT data available. Load a file first.".to_string())
         }
     }
 
@@ -612,12 +487,12 @@ impl AudioProcessor {
     ///
     /// After multiplication, phases are normalized to the range [-?, ?] using modulo operations.
     pub fn apply_phase_multiply(&mut self, factor: f64) -> Result<()> {
-        if let Some(polar_data_channels) = &mut self.fft_polar_data {
-            let num_channels = polar_data_channels.len();
+        if let Some(data_channels) = &mut self.fft_data {
+            let num_channels = data_channels.len();
 
             // Process each channel
             for channel_idx in 0..num_channels {
-                let channel_data = &mut polar_data_channels[channel_idx];
+                let channel_data = &mut data_channels[channel_idx];
 
                 // Apply phase multiplication to all bins (excluding DC and Nyquist for safety)
                 for bin in 0..channel_data.len() {
@@ -626,38 +501,30 @@ impl AudioProcessor {
                         channel_data[bin] = Complex64::new(channel_data[bin].re, 0.0);
                         continue;
                     }
-
-                    // Get current phase (imaginary part)
-                    let current_phase = channel_data[bin].im;
-
-                    // Multiply the phase by the factor
-                    let new_phase = current_phase * factor;
-
-                    // Normalize the phase to the range [-?, ?]
-                    // First get it to [0, 2?) with the modulo
-                    let normalized_phase = ((new_phase % (2.0 * std::f64::consts::PI))
-                        + (2.0 * std::f64::consts::PI))
-                        % (2.0 * std::f64::consts::PI);
-
-                    // Then shift values above ? to the [-?, ?] range
-                    let final_phase = if normalized_phase > std::f64::consts::PI {
-                        normalized_phase - 2.0 * std::f64::consts::PI
-                    } else {
-                        normalized_phase
-                    };
-
-                    // Update the phase while preserving amplitude
-                    channel_data[bin] = Complex64::new(channel_data[bin].re, final_phase);
+                    let (amp, phase) = channel_data[bin].to_polar();
+                    channel_data[bin] =
+                        Complex64::from_polar(amp, Self::normalize_phase(phase * factor));
                 }
             }
 
-            // After modifying polar data, clear the cartesian representation
-            // It will be recalculated when needed
-            self.fft_data = None;
-
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file first.".to_string())
+            Err("No FFT data available. Load a file first.".to_string())
+        }
+    }
+
+    pub fn normalize_phase(phase: f64) -> f64 {
+        // Normalize the phase to the range [-?, ?]
+        // First get it to [0, 2?) with the modulo
+        let normalized_phase = ((phase % (2.0 * std::f64::consts::PI))
+            + (2.0 * std::f64::consts::PI))
+            % (2.0 * std::f64::consts::PI);
+
+        // Then shift values above ? to the [-?, ?] range
+        if normalized_phase > std::f64::consts::PI {
+            normalized_phase - 2.0 * std::f64::consts::PI
+        } else {
+            normalized_phase
         }
     }
 
@@ -684,17 +551,16 @@ impl AudioProcessor {
             return Err("Repeat size must be between 0 and 100 percent".to_string());
         }
 
-        // We'll work with polar data since that's our main representation
-        if let Some(polar_data_channels) = &mut self.fft_polar_data {
+        if let Some(data_channels) = &mut self.fft_data {
             // Import the random number generator
             use rand::Rng;
 
             // Initialize the random number generator
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
 
             // Process each channel independently
-            for channel_idx in 0..polar_data_channels.len() {
-                let channel_data = &mut polar_data_channels[channel_idx];
+            for channel_idx in 0..data_channels.len() {
+                let channel_data = &mut data_channels[channel_idx];
                 let num_bins = channel_data.len();
 
                 // The DC and Nyquist components need special handling,
@@ -718,7 +584,7 @@ impl AudioProcessor {
                 // Perform the specified number of swaps
                 for _ in 0..repeat_count {
                     // Choose a random bin within the valid range
-                    let bin1 = rng.gen_range(first_bin..=last_bin);
+                    let bin1 = rng.random_range(first_bin..=last_bin);
 
                     // Calculate the range for the second bin based on block_size
                     let min_offset = -(max_distance as i64 / 2);
@@ -727,7 +593,7 @@ impl AudioProcessor {
                     // Generate a random offset different from 0 (no swap with self)
                     let mut offset = 0;
                     while offset == 0 {
-                        offset = rng.gen_range(min_offset..=max_offset);
+                        offset = rng.random_range(min_offset..=max_offset);
                     }
 
                     // Calculate second bin with wrap-around
@@ -753,12 +619,9 @@ impl AudioProcessor {
                 }
             }
 
-            // Clear cartesian data as it's now invalid
-            self.fft_data = None;
-
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file first.".to_string())
+            Err("No FFT data available. Load a file first.".to_string())
         }
     }
 
@@ -781,8 +644,8 @@ impl AudioProcessor {
         }
 
         // Need at least 2 channels for swapping
-        if let Some(polar_data_channels) = &mut self.fft_polar_data {
-            let num_channels = polar_data_channels.len();
+        if let Some(data_channels) = &mut self.fft_data {
+            let num_channels = data_channels.len();
 
             if num_channels < 2 {
                 return Err("Need at least 2 channels to perform channel swapping".to_string());
@@ -792,46 +655,43 @@ impl AudioProcessor {
             use rand::Rng;
 
             // Initialize the random number generator
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
 
             // Get the number of bins (should be the same for all channels)
-            let num_bins = polar_data_channels[0].len();
+            let num_bins = data_channels[0].len();
 
             let repeat_count = (repeat * (num_bins as f64)) as usize;
 
             // Perform the specified number of swaps
             for _ in 0..repeat_count {
                 // Choose a random bin within the valid range (avoid DC and Nyquist)
-                let bin = 1 + rng.gen_range(0..(num_bins - 2));
+                let bin = 1 + rng.random_range(0..(num_bins - 2));
 
                 // Choose first channel randomly
-                let chan1 = rng.gen_range(0..num_channels);
+                let chan1 = rng.random_range(0..num_channels);
 
                 // Choose second channel randomly (must be different)
                 let mut chan2 = chan1;
                 while chan2 == chan1 {
-                    chan2 = rng.gen_range(0..num_channels);
+                    chan2 = rng.random_range(0..num_channels);
                 }
 
                 // Swap the bin data between the two channels
-                let temp = polar_data_channels[chan1][bin];
-                polar_data_channels[chan1][bin] = polar_data_channels[chan2][bin];
-                polar_data_channels[chan2][bin] = temp;
+                let temp = data_channels[chan1][bin];
+                data_channels[chan1][bin] = data_channels[chan2][bin];
+                data_channels[chan2][bin] = temp;
             }
-
-            // Clear cartesian data as it's now invalid
-            self.fft_data = None;
 
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file first.".to_string())
+            Err("No FFT data available. Load a file first.".to_string())
         }
     }
 
     /// Apply a spectrum shift to move frequency content up or down
     pub fn apply_spectrum_shift(&mut self, shift_hz: f64) -> Result<()> {
-        if let Some(polar_data_channels) = &mut self.fft_polar_data {
-            let num_channels = polar_data_channels.len();
+        if let Some(data_channels) = &mut self.fft_data {
+            let num_channels = data_channels.len();
 
             // Calculate bin shift based on frequency resolution
             let freq_resolution = self.sample_rate as f64 / self.fft_size as f64;
@@ -840,13 +700,13 @@ impl AudioProcessor {
             // Create temporary storage for the shifted data
             let mut shifted_data = Vec::with_capacity(num_channels);
             for channel_idx in 0..num_channels {
-                let bins_per_channel = polar_data_channels[channel_idx].len();
+                let bins_per_channel = data_channels[channel_idx].len();
                 shifted_data.push(vec![Complex64::new(0.0, 0.0); bins_per_channel]);
             }
 
             // Process each channel
             for channel_idx in 0..num_channels {
-                let channel_data = &polar_data_channels[channel_idx];
+                let channel_data = &data_channels[channel_idx];
                 let channel_shifted = &mut shifted_data[channel_idx];
                 let nyquist_bin = channel_data.len() - 1;
 
@@ -870,15 +730,12 @@ impl AudioProcessor {
 
             // Replace the original data with shifted data
             for channel_idx in 0..num_channels {
-                polar_data_channels[channel_idx] = shifted_data[channel_idx].clone();
+                data_channels[channel_idx] = shifted_data[channel_idx].clone();
             }
-
-            // Clear cartesian representation as it's now invalid
-            self.fft_data = None;
 
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file first.".to_string())
+            Err("No FFT data available. Load a file first.".to_string())
         }
     }
 
@@ -892,23 +749,23 @@ impl AudioProcessor {
     /// * `exponent` - The power to raise bin indices to. Values > 1 compress high
     ///   frequencies and expand low frequencies, while values < 1 do the opposite.
     pub fn apply_stretch(&mut self, exponent: f64) -> Result<()> {
-        if let Some(polar_data_channels) = &mut self.fft_polar_data {
-            let num_channels = polar_data_channels.len();
+        if let Some(data_channels) = &mut self.fft_data {
+            let num_channels = data_channels.len();
 
             // Create temporary storage for the stretched data
             let mut stretched_data = Vec::with_capacity(num_channels);
             for channel_idx in 0..num_channels {
-                let bins_per_channel = polar_data_channels[channel_idx].len();
+                let bins_per_channel = data_channels[channel_idx].len();
                 stretched_data.push(vec![Complex64::new(0.0, 0.0); bins_per_channel]);
             }
 
             // Calculate the scaling factor to keep the maximum bin the same
-            let max_bin = (polar_data_channels[0].len() - 1) as f64;
+            let max_bin = (data_channels[0].len() - 1) as f64;
             let scale = max_bin / (max_bin.powf(exponent));
 
             // Process each channel
             for channel_idx in 0..num_channels {
-                let channel_data = &polar_data_channels[channel_idx];
+                let channel_data = &data_channels[channel_idx];
                 let channel_stretched = &mut stretched_data[channel_idx];
                 let nyquist_bin = channel_data.len() - 1;
 
@@ -933,15 +790,12 @@ impl AudioProcessor {
 
             // Replace the original data with stretched data
             for channel_idx in 0..num_channels {
-                polar_data_channels[channel_idx] = stretched_data[channel_idx].clone();
+                data_channels[channel_idx] = stretched_data[channel_idx].clone();
             }
-
-            // Clear cartesian representation as it's now invalid
-            self.fft_data = None;
 
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file first.".to_string())
+            Err("No FFT data available. Load a file first.".to_string())
         }
     }
 
@@ -955,19 +809,19 @@ impl AudioProcessor {
     /// * `frequency` - The frequency of the wobble modulation (higher values create more cycles)
     /// * `amplitude` - The amplitude of the wobble (between 0.0 and 1.0, controlling displacement amount)
     pub fn apply_wobble(&mut self, frequency: f64, amplitude: f64) -> Result<()> {
-        if let Some(polar_data_channels) = &mut self.fft_polar_data {
-            let num_channels = polar_data_channels.len();
+        if let Some(data_channels) = &mut self.fft_data {
+            let num_channels = data_channels.len();
 
             // Create temporary storage for the wobbled data
             let mut wobbled_data = Vec::with_capacity(num_channels);
             for channel_idx in 0..num_channels {
-                let bins_per_channel = polar_data_channels[channel_idx].len();
+                let bins_per_channel = data_channels[channel_idx].len();
                 wobbled_data.push(vec![Complex64::new(0.0, 0.0); bins_per_channel]);
             }
 
             // Process each channel
             for channel_idx in 0..num_channels {
-                let channel_data = &polar_data_channels[channel_idx];
+                let channel_data = &data_channels[channel_idx];
                 let channel_wobbled = &mut wobbled_data[channel_idx];
                 let nyquist_bin = channel_data.len() - 1;
 
@@ -997,15 +851,12 @@ impl AudioProcessor {
 
             // Replace the original data with wobbled data
             for channel_idx in 0..num_channels {
-                polar_data_channels[channel_idx] = wobbled_data[channel_idx].clone();
+                data_channels[channel_idx] = wobbled_data[channel_idx].clone();
             }
-
-            // Clear cartesian representation as it's now invalid
-            self.fft_data = None;
 
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file first.".to_string())
+            Err("No FFT data available. Load a file first.".to_string())
         }
     }
 
@@ -1025,40 +876,38 @@ impl AudioProcessor {
         threshold_level: f64,
         remove_above_threshold: bool,
     ) -> Result<()> {
-        if let Some(polar_data_channels) = &mut self.fft_polar_data {
-            let num_channels = polar_data_channels.len();
+        if let Some(data_channels) = &mut self.fft_data {
+            let num_channels = data_channels.len();
 
             // Process each channel
             for channel_idx in 0..num_channels {
-                let channel_data = &mut polar_data_channels[channel_idx];
+                let channel_data = &mut data_channels[channel_idx];
                 let nyquist_bin = channel_data.len() - 1;
 
                 // Process bins (including all except DC component which we always keep)
                 for i in 1..=nyquist_bin {
-                    // Calculate amplitude from polar representation (stored in real part)
-                    let amplitude = channel_data[i].re;
+                    // Calculate amplitude from polar representation
+                    let (mut amplitude, _) = channel_data[i].to_polar();
+                    amplitude = amplitude.abs();
 
                     // Apply threshold operation
                     if remove_above_threshold {
                         if amplitude > threshold_level {
                             // Zero out amplitudes above threshold
-                            channel_data[i] = Complex64::new(0.0, channel_data[i].im);
+                            channel_data[i] = Complex64::new(0.0, 0.0);
                         }
                     } else {
                         if amplitude < threshold_level {
                             // Zero out amplitudes below threshold
-                            channel_data[i] = Complex64::new(0.0, channel_data[i].im);
+                            channel_data[i] = Complex64::new(0.0, 0.0);
                         }
                     }
                 }
             }
 
-            // Clear cartesian representation as it's now invalid
-            self.fft_data = None;
-
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file first.".to_string())
+            Err("No FFT data available. Load a file first.".to_string())
         }
     }
 
@@ -1073,12 +922,12 @@ impl AudioProcessor {
     ///
     /// * `multiplier` - A scaling factor for the derivative values
     pub fn apply_amplitude_derivative(&mut self, multiplier: f64) -> Result<()> {
-        if let Some(polar_data_channels) = &mut self.fft_polar_data {
-            let num_channels = polar_data_channels.len();
+        if let Some(data_channels) = &mut self.fft_data {
+            let num_channels = data_channels.len();
 
             // Process each channel independently
             for channel_idx in 0..num_channels {
-                let channel_data = &mut polar_data_channels[channel_idx];
+                let channel_data = &mut data_channels[channel_idx];
                 let bin_count = channel_data.len();
 
                 // Always preserve DC component (bin 0)
@@ -1086,26 +935,22 @@ impl AudioProcessor {
 
                 // Process bins (excluding DC component)
                 for i in 1..bin_count {
-                    let current_amplitude = channel_data[i].re;
-                    let phase = channel_data[i].im;
+                    let (current_amplitude, phase) = channel_data[i].to_polar();
 
                     // Calculate amplitude derivative
                     let amplitude_derivative = (current_amplitude - last_amplitude) * multiplier;
 
                     // Replace amplitude with derivative, preserve phase
-                    channel_data[i] = Complex64::new(amplitude_derivative, phase);
+                    channel_data[i] = Complex64::from_polar(amplitude_derivative, phase);
 
                     // Update last amplitude for next iteration
                     last_amplitude = current_amplitude;
                 }
             }
 
-            // Clear cartesian representation as it's now invalid
-            self.fft_data = None;
-
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file first.".to_string())
+            Err("No FFT data available. Load a file first.".to_string())
         }
     }
 
@@ -1116,42 +961,39 @@ impl AudioProcessor {
     /// its neighbors and keeps only those bins that have higher amplitude than
     /// both their neighbors.
     pub fn keep_peaks(&mut self) -> Result<()> {
-        if let Some(polar_data_channels) = &mut self.fft_polar_data {
-            let num_channels = polar_data_channels.len();
+        if let Some(data_channels) = &mut self.fft_data {
+            let num_channels = data_channels.len();
 
             // Create temporary copy of the data for comparison
-            let mut temp_data = polar_data_channels.clone();
+            let temp_data = data_channels.clone();
 
             // Process each channel
             for channel_idx in 0..num_channels {
-                let channel_polar = &mut polar_data_channels[channel_idx];
+                let channel = &mut data_channels[channel_idx];
                 let channel_temp = &temp_data[channel_idx];
-                let bin_count = channel_polar.len();
+                let bin_count = channel.len();
 
                 // Always preserve DC component (bin 0)
 
                 // Process bins (excluding DC and the last bin)
                 for i in 1..(bin_count - 1) {
                     // Get amplitudes of current bin and its neighbors
-                    let amp_prev = channel_temp[i - 1].re * channel_temp[i - 1].re;
-                    let amp_curr = channel_temp[i].re * channel_temp[i].re;
-                    let amp_next = channel_temp[i + 1].re * channel_temp[i + 1].re;
+                    let (amp_prev, _) = channel_temp[i - 1].to_polar();
+                    let (amp_curr, phase) = channel_temp[i].to_polar();
+                    let (amp_next, _) = channel_temp[i + 1].to_polar();
 
                     // Check if current bin is a local maximum
                     if amp_curr < amp_prev || amp_curr < amp_next {
                         // Not a peak, zero out the bin
-                        channel_polar[i] = Complex64::new(0.0, channel_polar[i].im);
+                        channel[i] = Complex64::from_polar(0.0, phase);
                     }
                     // If it is a peak, keep it as is
                 }
             }
 
-            // Clear cartesian representation as it's now invalid
-            self.fft_data = None;
-
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file first.".to_string())
+            Err("No FFT data available. Load a file first.".to_string())
         }
     }
     /// Mix channels with specified weights.
@@ -1186,7 +1028,6 @@ impl AudioProcessor {
 
             // Clear FFT data as it's now invalid
             self.fft_data = None;
-            self.fft_polar_data = None;
 
             Ok(())
         } else {
@@ -1232,10 +1073,9 @@ impl AudioProcessor {
             return Err("Group size must be greater than zero".to_string());
         }
 
-        // We need FFT data in polar form to work with
-        if let Some(polar_data) = &self.fft_polar_data {
-            let num_channels = polar_data.len();
-            let bins_per_channel = polar_data[0].len();
+        if let Some(data) = &self.fft_data {
+            let num_channels = data.len();
+            let bins_per_channel = data[0].len();
 
             // Create a new Cartesian FFT data array with all zeros
             let mut new_fft_data = Vec::with_capacity(num_channels);
@@ -1249,7 +1089,7 @@ impl AudioProcessor {
                 if part_index == 0 {
                     // DC component (bin 0) goes to the first part only
                     // DC should only have real component (amplitude)
-                    new_fft_data[channel][0] = Complex64::new(polar_data[channel][0].re, 0.0);
+                    new_fft_data[channel][0] = Complex64::new(data[channel][0].re, 0.0);
                 }
 
                 // For all other bins, assign based on the group index
@@ -1257,41 +1097,28 @@ impl AudioProcessor {
                     let group_index = (bin / group_size) % num_parts;
 
                     if group_index == part_index {
-                        // Convert from polar (amplitude/phase) to Cartesian (real/imaginary)
-                        let amplitude = polar_data[channel][bin].re;
-                        let phase = polar_data[channel][bin].im;
-                        new_fft_data[channel][bin] = Complex64::from_polar(amplitude, phase);
+                        new_fft_data[channel][bin] =
+                            Complex64::new(data[channel][bin].re, data[channel][bin].im);
                     }
                     // All other bins remain zero
                 }
             }
 
+            //
+            self.tmp_fft_data = self.fft_data.take();
             // Store the new Cartesian FFT data for this part
             self.fft_data = Some(new_fft_data);
 
-            // We don't need to clear the polar data because it's our source of truth
-            // We're just creating a filtered version in Cartesian form for IFFT
-
             Ok(())
         } else {
-            Err("No polar FFT data available. Load a file and perform FFT first.".to_string())
+            Err("No FFT data available. Load a file and perform FFT first.".to_string())
         }
     }
 
-    /// Reset the processor to just use the original polar FFT data,
-    /// clearing any filtered Cartesian data created for splitting.
-    ///
-    /// This is a lighter-weight version of reset that doesn't recalculate the FFT.
+    /// Reset the processor by setting back original data
     pub fn reset_split(&mut self) -> Result<()> {
-        // Just clear the Cartesian FFT data, which forces the next operation
-        // to regenerate it from the original polar data
-        self.fft_data = None;
-
-        if self.fft_polar_data.is_some() {
-            Ok(())
-        } else {
-            Err("No polar FFT data available to reset to".to_string())
-        }
+        self.fft_data = self.tmp_fft_data.take();
+        Ok(())
     }
 
     /// Reset the processor to the original state completely,
@@ -1329,8 +1156,6 @@ pub struct AudioInfo {
     pub time_data: Option<TimeDataInfo>,
     /// Information about frequency domain data (if available)
     pub fft_data: Option<FFTDataInfo>,
-    /// Information about peak frequencies in each channel
-    pub peak_frequencies: Option<Vec<PeakFrequency>>,
 }
 
 /// Information about time domain data.
@@ -1353,17 +1178,4 @@ pub struct FFTDataInfo {
     pub complex_values_per_channel: usize,
     /// Frequency resolution in Hz
     pub frequency_resolution: f64,
-}
-
-/// Information about a peak frequency in a channel.
-#[derive(Debug, Clone)]
-pub struct PeakFrequency {
-    /// Channel index
-    pub channel: usize,
-    /// Frequency in Hz
-    pub frequency: f64,
-    /// FFT bin index
-    pub bin: usize,
-    /// Normalized amplitude (0.0 to 1.0)
-    pub amplitude: f64,
 }
