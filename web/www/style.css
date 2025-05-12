@@ -556,3 +556,161 @@ button.success-button:hover {
   background-color: rgba(76, 175, 80, 0.1);  /* Light green background on hover */
   color: var(--text-primary);
 }
+
+.chord-note-selection {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+}
+
+.note-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.octave-selector {
+  margin-bottom: 10px;
+}
+
+.octave-selector label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.octave-buttons {
+  display: flex;
+  gap: 5px;
+}
+
+.octave-button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.octave-button.active {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+.piano-keyboard {
+  position: relative;
+  height: 80px;
+  margin: 10px 0;
+}
+
+.white-keys {
+  display: flex;
+  height: 100%;
+}
+
+.black-keys {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  height: 60%;
+  width: 100%;
+}
+
+.key {
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding-bottom: 5px;
+  font-weight: 500;
+  transition: all 0.1s ease;
+}
+
+.white-key {
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #222;
+  flex: 1;
+  border-radius: 0 0 4px 4px;
+  margin: 0 1px;
+}
+
+.black-key {
+  background-color: #333;
+  color: white;
+  width: 10%;
+  margin-left: 5.5%;
+  margin-right: 5.5%;
+  z-index: 10;
+  border-radius: 0 0 4px 4px;
+}
+
+.black-key-blank {
+  background-color: transparent;
+  border-color: transparent;
+  pointer-events: none;
+}
+
+.key-pressed {
+  background-color: var(--accent-color);
+  color: white;
+  transform: translateY(2px);
+}
+
+.chord-presets {
+  margin-top: 15px;
+}
+
+.chord-presets label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.preset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.preset-button {
+  padding: 8px 12px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13px;
+}
+
+.preset-button:hover {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+  .note-controls {
+    flex-direction: row;
+  }
+  
+  .octave-selector {
+    width: 120px;
+  }
+  
+  .piano-keyboard {
+    flex: 1;
+  }
+}

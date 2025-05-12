@@ -8,11 +8,11 @@ cd "$(dirname "$0")"
 
 # Build the library with wasm features
 echo "Building library with WASM features..."
-cargo build -p mammut_fft_lib --features wasm
+cargo build --release -p mammut_fft_lib --features wasm
 
 # Build the WebAssembly module
 echo "Building WASM module..."
-wasm-pack build --target web
+wasm-pack build --release --target web
 
 # Copy the pkg directory to www
 echo "Copying WASM module to www directory..."

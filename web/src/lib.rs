@@ -1,4 +1,5 @@
 use js_sys::Float32Array;
+use mammut_fft_lib::audio_read_write::read_audio_bytes;
 use mammut_fft_lib::utils::save_to_wav_bytes;
 use mammut_fft_lib::{AudioProcessor, Result};
 use serde::Serialize;
@@ -306,6 +307,30 @@ impl WasmAudioProcessor {
         }
     }
 
+    #[wasm_bindgen]
+    pub fn read_audio_bytes(&mut self, data: js_sys::Uint8Array) -> Result<()> {
+        // Convert input
+        let data_vec = data.to_vec();
+
+        // Process in a separate thread if expensive
+        let result = read_audio_bytes(data_vec);
+
+        match result {
+            Ok((sample_rate, channels)) => {
+
+                self.original_samples = Some(channels.clone());
+
+                // Set the audio data in the processor
+                self.processor
+                    .set_audio_data(sample_rate, channels.len().try_into().unwrap(), channels)?;
+                // Perform FFT on the loaded data
+                self.processor.perform_fft()?;
+                Ok(())
+            }
+            Err(err) => Err(err.to_string()),
+        }
+    }
+
     // Reset to original audio data
     #[wasm_bindgen]
     pub fn reset(&mut self) -> Result<()> {
@@ -363,5 +388,30 @@ impl WasmAudioProcessor {
     ) -> Result<()> {
         self.processor
             .prepare_split_part(part_index, num_parts, group_size)
+    }
+
+    /// Apply a chord filter
+    #[wasm_bindgen]
+    pub fn apply_chord_filter(
+        &mut self,
+        freq1: f64,
+        amp1: f64,
+        freq2: f64,
+        amp2: f64,
+        freq3: f64,
+        amp3: f64,
+        freq4: f64,
+        amp4: f64,
+        freq5: f64,
+        amp5: f64,
+        width_cents: f64,
+        harmonics_strength: f64,
+    ) -> Result<()> {
+        self.processor.apply_chord_filter(
+            [freq1, freq2, freq3, freq4, freq5],
+            [amp1, amp2, amp3, amp4, amp5],
+            width_cents,
+            harmonics_strength,
+        )
     }
 }

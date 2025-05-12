@@ -1,339 +1,780 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>mammut-fft - web enabled mammoth fft</title>
-  <link rel="stylesheet" href="style.css">
-  <style>
-    /* Drag and drop styling */
-    .upload-section {
-      transition: all 0.3s ease;
-    }
-    
-    .upload-section.drag-over {
-      background-color: rgba(79, 158, 255, 0.1);
-      border-color: var(--accent-color);
-      box-shadow: 0 0 10px rgba(79, 158, 255, 0.2);
-    }
-    
-    .drag-message {
-      display: none;
-      margin: 15px 0;
-      font-size: 16px;
-      color: var(--accent-color);
-      font-weight: 500;
-    }
-    
-    .upload-section.drag-over .drag-message {
-      display: block;
-    }
-    
-    /* Improved Open Audio button */
-    .custom-file-button#openAudioButton {
-      padding: 12px 24px;
-      background-color: var(--accent-color);
-      color: white;
-      font-weight: 500;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 15px;
-      transition: background-color 0.2s, transform 0.1s;
-      min-width: 140px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mammut-fft - web enabled mammoth fft</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      /* Drag and drop styling */
+      .upload-section {
+        transition: all 0.3s ease;
+      }
 
-    .custom-file-button#openAudioButton:hover {
-      background-color: var(--accent-hover);
-    }
+      .upload-section.drag-over {
+        background-color: rgba(79, 158, 255, 0.1);
+        border-color: var(--accent-color);
+        box-shadow: 0 0 10px rgba(79, 158, 255, 0.2);
+      }
 
-    .custom-file-button#openAudioButton:active {
-      transform: translateY(1px);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1><img src="mammut-fft-logo.png" alt="mammut-fft"/ width="706" height="123"></h1>
+      .drag-message {
+        display: none;
+        margin: 15px 0;
+        font-size: 16px;
+        color: var(--accent-color);
+        font-weight: 500;
+      }
 
-    <div id="status" class="status">Loading WASM module...</div>
-    
-    <div id="uploadSection" class="upload-section">
-      <label for="audioFile">Select WAV file to process or drop file here</label>
-      <div class="file-input-wrapper">
-        <input type="file" id="audioFile" accept=".wav" />
-        <button class="custom-file-button" id="openAudioButton">Open Audio</button>
-      </div>
-      <div class="drag-message">Release to upload audio file</div>
-      <div id="fileInfo" style="margin-top: 10px; font-size: 14px; color: var(--text-secondary);"></div>
-    </div>
+      .upload-section.drag-over .drag-message {
+        display: block;
+      }
 
-    <!-- Main controls always visible at the top -->
-    <div class="main-controls" style="display: none;">
-      <div class="audio-panel">
-        <div class="essential-buttons">
-          <button id="processButton" class="success-button">Process Audio</button>
-        </div>
-        <audio id="audioPlayer" controls></audio>
-        <div class="essential-buttons">
-          <button id="resetButton">Reset to Original</button>
-          <button id="downloadButton">Download Processed Audio</button>
-        </div>
-      </div>
-  
-      <div class="visualization">
-        <canvas id="spectrumCanvas" width="800" height="300"></canvas>
-      </div>
-    </div>    
+      /* Improved Open Audio button */
+      .custom-file-button#openAudioButton {
+        padding: 12px 24px;
+        background-color: var(--accent-color);
+        color: white;
+        font-weight: 500;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 15px;
+        transition:
+          background-color 0.2s,
+          transform 0.1s;
+        min-width: 140px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
 
-     <!-- Tabbed interface for all operations -->
-  <div class="operations-tabs" style="display: none;">
-    <div class="tabs-header">
-      <button class="tab-button active" data-tab="power">Amplitude Power</button>
-      <button class="tab-button" data-tab="phase-mult">Phase Multiplication</button>
-      <button class="tab-button" data-tab="bin-swap">Frequency Bin Swap</button>
-      <button class="tab-button" data-tab="channel-swap">Channel Bin Swap</button>
-      <button class="tab-button" data-tab="shift">Spectrum Shift</button>
-      <button class="tab-button" data-tab="stretch">Frequency Stretch</button>
-      <button class="tab-button" data-tab="wobble">Frequency Wobble</button>
-      <button class="tab-button" data-tab="threshold">Threshold Filter</button>
-      <button class="tab-button" data-tab="derivate">Amplitude Derivative</button>
-      <button class="tab-button" data-tab="keep-peaks">Keep Peaks</button>
-      <button class="tab-button" data-tab="split">Frequency Spectrum Split</button>
-      <button class="tab-button" data-tab="filters">Frequency Filters</button>
-    </div>
-    
-    <div class="tabs-content">
-      <div class="tab-content active" id="power-tab">
-        <div class="control-group">
-          <p class="description">Raises the amplitude of each frequency bin to the specified power.</p>
-          <div class="slider-container">
-            <input type="range" id="powerSlider" min="0.01" max="5" step="0.01" value="1">
-            <span id="powerValue">1.0</span>
+      .custom-file-button#openAudioButton:hover {
+        background-color: var(--accent-hover);
+      }
+
+      .custom-file-button#openAudioButton:active {
+        transform: translateY(1px);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>
+        <img
+          src="mammut-fft-logo.png"
+          width="706"
+          height="123"
+          alt="mammut-fft"
+        />
+      </h1>
+
+      <div id="status" class="status">Loading WASM module...</div>
+
+      <div id="uploadSection" class="upload-section">
+        <label for="audioFile"
+          >Select WAV file to process or drop file here</label
+        >
+        <div class="file-input-wrapper">
+          <input type="file" id="audioFile" accept="audio/*" />
+          <button class="custom-file-button" id="openAudioButton">
+            Open Audio
+          </button>
+        </div>
+        <div class="drag-message">Release to upload audio file</div>
+        <div
+          id="fileInfo"
+          style="
+            margin-top: 10px;
+            font-size: 14px;
+            color: var(--text-secondary);
+          "
+        ></div>
+      </div>
+
+      <!-- Main controls always visible at the top -->
+      <div class="main-controls" style="display: none">
+        <div class="audio-panel">
+          <div class="essential-buttons">
+            <button id="processButton" class="success-button">
+              Process Audio
+            </button>
           </div>
-          <button id="applyPowerButton">Apply Power</button>
+          <audio id="audioPlayer" controls loop></audio>
+          <div class="essential-buttons">
+            <button id="resetButton">Reset to Original</button>
+            <button id="downloadButton">Download Processed Audio</button>
+          </div>
+        </div>
+
+        <div class="visualization">
+          <canvas id="spectrumCanvas" width="800" height="300"></canvas>
         </div>
       </div>
-      <div class="tab-content" id="phase-mult-tab">
-        <div class="control-group">
-          <p class="description">Multiplies each frequency's phase by this factor.</p>
-          <div class="slider-container">
-            <input type="range" id="phaseMultiplySlider" min="-3" max="3" step="0.01" value="1">
-            <span id="phaseMultiplyValue">1.0</span>
-          </div>
-          <button id="applyPhaseMultiplyButton">Apply Phase Multiply</button>
+
+      <!-- Tabbed interface for all operations -->
+      <div class="operations-tabs" style="display: none">
+        <div class="tabs-header">
+          <button class="tab-button active" data-tab="power">
+            Amplitude Power
+          </button>
+          <button class="tab-button" data-tab="phase-mult">
+            Phase Multiplication
+          </button>
+          <button class="tab-button" data-tab="bin-swap">
+            Frequency Bin Swap
+          </button>
+          <button class="tab-button" data-tab="channel-swap">
+            Channel Bin Swap
+          </button>
+          <button class="tab-button" data-tab="shift">Spectrum Shift</button>
+          <button class="tab-button" data-tab="stretch">
+            Frequency Stretch
+          </button>
+          <button class="tab-button" data-tab="wobble">Frequency Wobble</button>
+          <button class="tab-button" data-tab="threshold">
+            Threshold Filter
+          </button>
+          <button class="tab-button" data-tab="derivate">
+            Amplitude Derivative
+          </button>
+          <button class="tab-button" data-tab="keep-peaks">Keep Peaks</button>
+          <button class="tab-button" data-tab="split">
+            Frequency Spectrum Split
+          </button>
+          <button class="tab-button" data-tab="filters">
+            Frequency Filters
+          </button>
+          <button class="tab-button" data-tab="chord-filter">
+            Chord Filter
+          </button>
         </div>
-      </div>
-      <div class="tab-content" id="bin-swap-tab">    
-        <div class="control-group">
-          <p class="description">
-            Randomly swaps frequency bins.
-          </p>
-          
-          <div class="slider-container">
-            <label for="swapBlockSize">Block Size (% of full spectrum):</label>
-            <input type="range" id="swapBlockSize" min="0.01" max="100" step="0.01" value="1">
-            <span id="swapBlockSizeValue">1</span>
+
+        <div class="tabs-content">
+          <div class="tab-content active" id="power-tab">
+            <div class="control-group">
+              <p class="description">
+                Raises the amplitude of each frequency bin to the specified
+                power.
+              </p>
+              <div class="slider-container">
+                <input
+                  type="range"
+                  id="powerSlider"
+                  min="0.01"
+                  max="5"
+                  step="0.01"
+                  value="1"
+                />
+                <span id="powerValue">1.0</span>
+              </div>
+              <button id="applyPowerButton">Apply Power</button>
+            </div>
           </div>
-          
-          <div class="slider-container">
-            <label for="swapRepeat">Number of Swaps (% of number of bins):</label>
-            <input type="range" id="swapRepeat" min="0.001" max="10" step="0.001" value="0.1">
-            <span id="swapRepeatValue">0.1</span>
+          <div class="tab-content" id="phase-mult-tab">
+            <div class="control-group">
+              <p class="description">
+                Multiplies each frequency's phase by this factor.
+              </p>
+              <div class="slider-container">
+                <input
+                  type="range"
+                  id="phaseMultiplySlider"
+                  min="-3"
+                  max="3"
+                  step="0.01"
+                  value="1"
+                />
+                <span id="phaseMultiplyValue">1.0</span>
+              </div>
+              <button id="applyPhaseMultiplyButton">
+                Apply Phase Multiply
+              </button>
+            </div>
           </div>
-          
-          <button id="applySwapBinsButton">Apply Bin Swapping</button>
-        </div>
-      </div>
-      <div class="tab-content" id="channel-swap-tab">        
-        <div class="control-group">
-          <p class="description">
-            Randomly swaps frequency bins between different channels.
-            Only works with multi-channel audio (stereo or more).
-          </p>
-          
-          <div class="slider-container">
-            <label for="channelSwapRepeat">Number of Swaps:</label>
-            <input type="range" id="channelSwapRepeat" min="0.001" max="10" step="0.001" value="0.1">
-            <span id="channelSwapRepeatValue">0.1</span>
+          <div class="tab-content" id="bin-swap-tab">
+            <div class="control-group">
+              <p class="description">Randomly swaps frequency bins.</p>
+
+              <div class="slider-container">
+                <label for="swapBlockSize"
+                  >Block Size (% of full spectrum):</label
+                >
+                <input
+                  type="range"
+                  id="swapBlockSize"
+                  min="0.01"
+                  max="100"
+                  step="0.01"
+                  value="1"
+                />
+                <span id="swapBlockSizeValue">1</span>
+              </div>
+
+              <div class="slider-container">
+                <label for="swapRepeat"
+                  >Number of Swaps (% of number of bins):</label
+                >
+                <input
+                  type="range"
+                  id="swapRepeat"
+                  min="0.001"
+                  max="10"
+                  step="0.001"
+                  value="0.1"
+                />
+                <span id="swapRepeatValue">0.1</span>
+              </div>
+
+              <button id="applySwapBinsButton">Apply Bin Swapping</button>
+            </div>
           </div>
-          
-          <button id="applyChannelSwapButton">Apply Channel Swapping</button>
-        </div>     
-      </div>
-      <div class="tab-content" id="shift-tab">  
-        <div class="control-group">
-          <p class="description">
-              Shifts the entire frequency spectrum up or down by the specified amount in Hz.
-          </p>
-          
-          <div class="slider-container">
-              <label for="spectrumShiftValue">Shift amount (Hz):</label>
-              <input type="range" id="spectrumShiftValue" min="-5000" max="5000" step="1" value="0">
-              <span id="spectrumShiftValueDisplay">0 Hz</span>
+          <div class="tab-content" id="channel-swap-tab">
+            <div class="control-group">
+              <p class="description">
+                Randomly swaps frequency bins between different channels. Only
+                works with multi-channel audio (stereo or more).
+              </p>
+
+              <div class="slider-container">
+                <label for="channelSwapRepeat">Number of Swaps:</label>
+                <input
+                  type="range"
+                  id="channelSwapRepeat"
+                  min="0.001"
+                  max="10"
+                  step="0.001"
+                  value="0.1"
+                />
+                <span id="channelSwapRepeatValue">0.1</span>
+              </div>
+
+              <button id="applyChannelSwapButton">
+                Apply Channel Swapping
+              </button>
+            </div>
           </div>
-          
-          <button id="applySpectrumShiftButton">Apply Spectrum Shift</button>
-        </div>
-      </div>
-      <div class="tab-content" id="stretch-tab">        
-        <div class="control-group">
-          <p class="description">
-              Applies non-linear stretching to the frequency spectrum. Values > 1 compress high frequencies
-              and expand low frequencies, while values < 1 do the opposite.
-          </p>
-          
-          <div class="slider-container">
-              <label for="stretchExponent">Stretch exponent:</label>
-              <input type="range" id="stretchExponent" min="0.2" max="5" step="0.1" value="1.3">
-              <span id="stretchExponentDisplay">1.3</span>
+          <div class="tab-content" id="shift-tab">
+            <div class="control-group">
+              <p class="description">
+                Shifts the entire frequency spectrum up or down by the specified
+                amount in Hz.
+              </p>
+
+              <div class="slider-container">
+                <label for="spectrumShiftValue">Shift amount (Hz):</label>
+                <input
+                  type="range"
+                  id="spectrumShiftValue"
+                  min="-5000"
+                  max="5000"
+                  step="1"
+                  value="0"
+                />
+                <span id="spectrumShiftValueDisplay">0 Hz</span>
+              </div>
+
+              <button id="applySpectrumShiftButton">
+                Apply Spectrum Shift
+              </button>
+            </div>
           </div>
-          
-          <button id="applyStretchButton">Apply Stretch</button>
-        </div>      
-      </div>
-      <div class="tab-content" id="wobble-tab">        
-        <div class="control-group">
-          <p class="description">
-              Creates a sinusoidal modulation of frequency bins, resulting in a wobbling effect.
-          </p>
-          
-          <div class="slider-container">
-              <label for="wobbleFrequency">Wobble frequency:</label>
-              <input type="range" id="wobbleFrequency" min="1" max="50" step="0.5" value="10">
-              <span id="wobbleFrequencyDisplay">10.0</span>
+          <div class="tab-content" id="stretch-tab">
+            <div class="control-group">
+              <p class="description">
+                Applies non-linear stretching to the frequency spectrum. Values
+                > 1 compress high frequencies and expand low frequencies, while
+                values < 1 do the opposite.
+              </p>
+
+              <div class="slider-container">
+                <label for="stretchExponent">Stretch exponent:</label>
+                <input
+                  type="range"
+                  id="stretchExponent"
+                  min="0.2"
+                  max="5"
+                  step="0.1"
+                  value="1.3"
+                />
+                <span id="stretchExponentDisplay">1.3</span>
+              </div>
+
+              <button id="applyStretchButton">Apply Stretch</button>
+            </div>
           </div>
-          
-          <div class="slider-container">
-              <label for="wobbleAmplitude">Wobble amplitude:</label>
-              <input type="range" id="wobbleAmplitude" min="0.001" max="0.1" step="0.001" value="0.01">
-              <span id="wobbleAmplitudeDisplay">0.01</span>
+          <div class="tab-content" id="wobble-tab">
+            <div class="control-group">
+              <p class="description">
+                Creates a sinusoidal modulation of frequency bins, resulting in
+                a wobbling effect.
+              </p>
+
+              <div class="slider-container">
+                <label for="wobbleFrequency">Wobble frequency:</label>
+                <input
+                  type="range"
+                  id="wobbleFrequency"
+                  min="1"
+                  max="50"
+                  step="0.5"
+                  value="10"
+                />
+                <span id="wobbleFrequencyDisplay">10.0</span>
+              </div>
+
+              <div class="slider-container">
+                <label for="wobbleAmplitude">Wobble amplitude:</label>
+                <input
+                  type="range"
+                  id="wobbleAmplitude"
+                  min="0.001"
+                  max="0.1"
+                  step="0.001"
+                  value="0.01"
+                />
+                <span id="wobbleAmplitudeDisplay">0.01</span>
+              </div>
+
+              <button id="applyWobbleButton">Apply Wobble</button>
+            </div>
           </div>
-          
-          <button id="applyWobbleButton">Apply Wobble</button>
-        </div>
-      </div>
-      <div class="tab-content" id="threshold-tab">        
-        <div class="control-group">
-          <p class="description">
-              Removes frequency components based on their amplitude, acting as either
-              a noise gate (remove below) or a peak limiter (remove above).
-          </p>
-          
-          <div class="slider-container">
-              <label for="thresholdLevel">Threshold level:</label>
-              <input type="range" id="thresholdLevel" min="0.01" max="5.0" step="0.01" value="1.0">
-              <span id="thresholdLevelDisplay">1.0</span>
-          </div>
-          
-          <div class="form-group">
-              <label>
-                  <input type="checkbox" id="removeAboveThreshold">
+          <div class="tab-content" id="threshold-tab">
+            <div class="control-group">
+              <p class="description">
+                Removes frequency components based on their amplitude, acting as
+                either a noise gate (remove below) or a peak limiter (remove
+                above).
+              </p>
+
+              <div class="slider-container">
+                <label for="thresholdLevel">Threshold level:</label>
+                <input
+                  type="range"
+                  id="thresholdLevel"
+                  min="0.01"
+                  max="5.0"
+                  step="0.01"
+                  value="1.0"
+                />
+                <span id="thresholdLevelDisplay">1.0</span>
+              </div>
+
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" id="removeAboveThreshold" />
                   Remove components above threshold (instead of below)
-              </label>
+                </label>
+              </div>
+
+              <button id="applyThresholdButton">Apply Threshold Filter</button>
+            </div>
           </div>
-          
-          <button id="applyThresholdButton">Apply Threshold Filter</button>
-        </div>    
-      </div>
-      <div class="tab-content" id="derivate-tab">
-        <div class="control-group">
-          <p class="description">
-              Replaces each frequency bin's amplitude with the difference between it and
-              the previous bin, creating spectral edge detection effects.
-          </p>
-          
-          <div class="slider-container">
-              <label for="derivateMultiplier">Derivative multiplier:</label>
-              <input type="range" id="derivateMultiplier" min="0.1" max="10.0" step="0.1" value="1.0">
-              <span id="derivateMultiplierDisplay">1.0</span>
+          <div class="tab-content" id="derivate-tab">
+            <div class="control-group">
+              <p class="description">
+                Replaces each frequency bin's amplitude with the difference
+                between it and the previous bin, creating spectral edge
+                detection effects.
+              </p>
+
+              <div class="slider-container">
+                <label for="derivateMultiplier">Derivative multiplier:</label>
+                <input
+                  type="range"
+                  id="derivateMultiplier"
+                  min="0.1"
+                  max="10.0"
+                  step="0.1"
+                  value="1.0"
+                />
+                <span id="derivateMultiplierDisplay">1.0</span>
+              </div>
+
+              <button id="applyDerivateButton">
+                Apply Amplitude Derivative
+              </button>
+            </div>
           </div>
-          
-          <button id="applyDerivateButton">Apply Amplitude Derivative</button>
-        </div>
-      </div>
-      <div class="tab-content" id="keep-peaks-tab">    
-        <div class="control-group">
-          <p class="description">
-              Keeps only the local maxima in the frequency spectrum, zeroing out all
-              other bins. Useful for isolating prominent frequency components.
-          </p>
-          
-          <button id="applyKeepPeaksButton">Apply Keep Peaks Filter</button>
-        </div>  
-      </div>
-      <div class="tab-content" id="split-tab"> 
-        <div class="control-group">
-          <!--
+          <div class="tab-content" id="keep-peaks-tab">
+            <div class="control-group">
+              <p class="description">
+                Keeps only the local maxima in the frequency spectrum, zeroing
+                out all other bins. Useful for isolating prominent frequency
+                components.
+              </p>
+
+              <button id="applyKeepPeaksButton">Apply Keep Peaks Filter</button>
+            </div>
+          </div>
+          <div class="tab-content" id="split-tab">
+            <div class="control-group">
+              <!--
           <div class="new-feature-badge">NEW!</div>
           -->
-          <p class="description">
-            Split the audio into multiple files, each containing only specific frequency bins.
-            This allows separation of frequency components across multiple files.
+              <p class="description">
+                Split the audio into multiple files, each containing only
+                specific frequency bins. This allows separation of frequency
+                components across multiple files.
+              </p>
+
+              <div class="split-controls">
+                <div class="form-group">
+                  <label for="splitBaseName">Base Filename:</label>
+                  <input
+                    type="text"
+                    id="splitBaseName"
+                    value="split"
+                    class="text-input"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="splitNumParts">Number of Parts:</label>
+                  <input
+                    type="number"
+                    id="splitNumParts"
+                    min="2"
+                    max="16"
+                    value="2"
+                    class="number-input"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="splitGroupSize">Group Size:</label>
+                  <input
+                    type="number"
+                    id="splitGroupSize"
+                    min="1"
+                    max="32"
+                    value="1"
+                    class="number-input"
+                  />
+                  <div class="help-text">
+                    Number of consecutive frequency bins to group together
+                  </div>
+                </div>
+              </div>
+
+              <button id="applySplitButton" class="success-button">
+                Split & Download Parts
+              </button>
+            </div>
+          </div>
+          <div class="tab-content" id="filters-tab">
+            <div class="control-group">
+              <h3>Frequency Filters</h3>
+              <p class="description">
+                Apply various filters to remove or isolate specific frequency
+                ranges in your audio.
+              </p>
+              <div class="filter-controls">
+                <div>
+                  <label for="filterType">Filter Type:</label>
+                  <select id="filterType">
+                    <option value="lowpass">Lowpass</option>
+                    <option value="highpass">Highpass</option>
+                    <option value="bandpass">Bandpass</option>
+                  </select>
+                </div>
+
+                <div class="filter-sliders">
+                  <div class="slider-container">
+                    <label for="cutoffLow">Low Cutoff:</label>
+                    <input
+                      type="range"
+                      id="cutoffLow"
+                      min="20"
+                      max="20000"
+                      step="1"
+                      value="1000"
+                    />
+                    <span id="cutoffLowValue">1000 Hz</span>
+                  </div>
+
+                  <div
+                    class="slider-container"
+                    id="highCutoffContainer"
+                    style="display: none"
+                  >
+                    <label for="cutoffHigh">High Cutoff:</label>
+                    <input
+                      type="range"
+                      id="cutoffHigh"
+                      min="20"
+                      max="20000"
+                      step="1"
+                      value="5000"
+                    />
+                    <span id="cutoffHighValue">5000 Hz</span>
+                  </div>
+                </div>
+
+                <button id="applyFilterButton">Apply Filter</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-content" id="chord-filter-tab">
+            <div class="control-group">
+              <p class="description">
+                Filter audio to keep only the frequencies of a chord and their
+                harmonics.
+              </p>
+
+              <div class="chord-filter-controls">
+                <h4>Chord Frequencies</h4>
+                <div class="frequency-table">
+                  <div class="freq-row header">
+                    <div>Frequency (Hz)</div>
+                    <div>Amplitude (0-1)</div>
+                  </div>
+
+                  <div class="freq-row">
+                    <div>
+                      <input
+                        type="number"
+                        id="chordFreq1"
+                        min="0"
+                        max="20000"
+                        step="0.1"
+                        value="440"
+                        class="number-input"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        id="chordAmp1"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value="1"
+                        class="number-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="freq-row">
+                    <div>
+                      <input
+                        type="number"
+                        id="chordFreq2"
+                        min="0"
+                        max="20000"
+                        step="0.1"
+                        value="550"
+                        class="number-input"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        id="chordAmp2"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value="0.8"
+                        class="number-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="freq-row">
+                    <div>
+                      <input
+                        type="number"
+                        id="chordFreq3"
+                        min="0"
+                        max="20000"
+                        step="0.1"
+                        value="660"
+                        class="number-input"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        id="chordAmp3"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value="0.6"
+                        class="number-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="freq-row">
+                    <div>
+                      <input
+                        type="number"
+                        id="chordFreq4"
+                        min="0"
+                        max="20000"
+                        step="0.1"
+                        value="0"
+                        class="number-input"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        id="chordAmp4"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value="0"
+                        class="number-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="freq-row">
+                    <div>
+                      <input
+                        type="number"
+                        id="chordFreq5"
+                        min="0"
+                        max="20000"
+                        step="0.1"
+                        value="0"
+                        class="number-input"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        id="chordAmp5"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value="0"
+                        class="number-input"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <h4>Filter Parameters</h4>
+                <div class="slider-container">
+                  <label for="chordWidth">Width (cents):</label>
+                  <input
+                    type="range"
+                    id="chordWidth"
+                    min="0"
+                    max="50"
+                    step="1"
+                    value="25"
+                  />
+                  <span id="chordWidthValue">25 cents</span>
+                </div>
+
+                <div class="slider-container">
+                  <label for="chordHarmonics">Harmonic Strength:</label>
+                  <input
+                    type="range"
+                    id="chordHarmonics"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value="0.5"
+                  />
+                  <span id="chordHarmonicsValue">0.5</span>
+                </div>
+
+                <div class="chord-note-selection">
+                  <h5>Quick Notes</h5>
+                  <p class="help-text">
+                    Select an octave and note to add to your chord:
+                  </p>
+
+                  <div class="note-controls">
+                    <div class="octave-selector">
+                      <label for="noteOctave">Octave:</label>
+                      <div class="octave-buttons">
+                        <button class="octave-button" data-octave="-1">
+                          -1
+                        </button>
+                        <button class="octave-button" data-octave="0">0</button>
+                        <button class="octave-button" data-octave="1">1</button>
+                        <button class="octave-button" data-octave="2">2</button>
+                        <button class="octave-button" data-octave="3">3</button>
+                        <button class="octave-button active" data-octave="4">
+                          4
+                        </button>
+                        <button class="octave-button" data-octave="5">5</button>
+                        <button class="octave-button" data-octave="6">6</button>
+                        <button class="octave-button" data-octave="7">7</button>
+                      </div>
+                    </div>
+
+                    <div class="piano-keyboard">
+                      <div class="white-keys">
+                        <button class="key white-key" data-note="C">C</button>
+                        <button class="key white-key" data-note="D">D</button>
+                        <button class="key white-key" data-note="E">E</button>
+                        <button class="key white-key" data-note="F">F</button>
+                        <button class="key white-key" data-note="G">G</button>
+                        <button class="key white-key" data-note="A">A</button>
+                        <button class="key white-key" data-note="B">B</button>
+                      </div>
+                      <div class="black-keys">
+                        <button class="key black-key" data-note="C#">C#</button>
+                        <button class="key black-key" data-note="D#">D#</button>
+                        <button class="key black-key black-key-blank"></button>
+                        <button class="key black-key" data-note="F#">F#</button>
+                        <button class="key black-key" data-note="G#">G#</button>
+                        <button class="key black-key" data-note="A#">A#</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="chord-presets">
+                    <label>Common Chords:</label>
+                    <div class="preset-buttons">
+                      <button class="preset-button" data-chord="major">
+                        Major
+                      </button>
+                      <button class="preset-button" data-chord="minor">
+                        Minor
+                      </button>
+                      <button class="preset-button" data-chord="aug">
+                        Augmented
+                      </button>
+                      <button class="preset-button" data-chord="dim">
+                        Diminished
+                      </button>
+                      <button class="preset-button" data-chord="7th">
+                        7th
+                      </button>
+                      <button class="preset-button" data-chord="maj7">
+                        Maj7
+                      </button>
+                      <button class="preset-button" data-chord="min7">
+                        Min7
+                      </button>
+                      <button class="preset-button" data-chord="sus4">
+                        Sus4
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <button id="applyChordFilterButton">Apply Chord Filter</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>
+            mammut-fft is based on/inspired by
+            <a href="https://github.com/kmatheussen/mammut">Mammut</a>
+            originally by &Oslash;yvind Hammer, GUI by Kjetil Matheussen<br />
+            mammut-fft is written in rust and compiled to webassembly to enable
+            it for the web
           </p>
-          
-          <div class="split-controls">
-            <div class="form-group">
-              <label for="splitBaseName">Base Filename:</label>
-              <input type="text" id="splitBaseName" value="split" class="text-input">
-            </div>
-            
-            <div class="form-group">
-              <label for="splitNumParts">Number of Parts:</label>
-              <input type="number" id="splitNumParts" min="2" max="16" value="2" class="number-input">
-            </div>
-            
-            <div class="form-group">
-              <label for="splitGroupSize">Group Size:</label>
-              <input type="number" id="splitGroupSize" min="1" max="32" value="1" class="number-input">
-              <div class="help-text">Number of consecutive frequency bins to group together</div>
-            </div>
-          </div>
-          
-          <button id="applySplitButton" class="success-button">Split & Download Parts</button>
-        </div>        
-      </div>
-      <div class="tab-content" id="filters-tab"> 
-        <div class="control-group">
-          <h3>Frequency Filters</h3>
-          <p class="description">Apply various filters to remove or isolate specific frequency ranges in your audio.</p>
-          <div class="filter-controls">
-            <div>
-              <label for="filterType">Filter Type:</label>
-              <select id="filterType">
-                <option value="lowpass">Lowpass</option>
-                <option value="highpass">Highpass</option>
-                <option value="bandpass">Bandpass</option>
-              </select>
-            </div>
-            
-            <div class="filter-sliders">
-              <div class="slider-container">
-                <label for="cutoffLow">Low Cutoff:</label>
-                <input type="range" id="cutoffLow" min="20" max="20000" step="1" value="1000">
-                <span id="cutoffLowValue">1000 Hz</span>
-              </div>
-              
-              <div class="slider-container" id="highCutoffContainer" style="display: none;">
-                <label for="cutoffHigh">High Cutoff:</label>
-                <input type="range" id="cutoffHigh" min="20" max="20000" step="1" value="5000">
-                <span id="cutoffHighValue">5000 Hz</span>
-              </div>
-            </div>
-            
-            <button id="applyFilterButton">Apply Filter</button>
-          </div>
-        </div>  
-      </div>
-    </div>
-    </div>
-    
-    <div class="footer">
-      <p>mammut-fft is based on/inspired by <a href="https://github.com/kmatheussen/mammut">Mammut</a> originally by &Oslash;yvind Hammer, GUI by Kjetil Matheussen<br>
-        mammut-fft is written in rust and compiled to webassembly to enable it for the web
-      </p>
-      <div style="text-align: left;font-size: small;"><pre><code>Introduction and final words from the original program:
+          <div style="text-align: left; font-size: small">
+            <pre><code>Introduction and final words from the original program:
 Mammut will FFT your sound in one single gigantic analysis (no windows). These spectral data, where the development in time 
 is incorporated in mysterious ways, may then be transformed by different algorithms prior to resynthesis. 
 An interesting aspect of Mammut is its completely non-intuitive sound transformation approach.
@@ -341,1067 +782,1680 @@ An interesting aspect of Mammut is its completely non-intuitive sound transforma
 The general idea (and the name "mammoth FFT") was conceived by the Swedish composer Paul Pignon many years ago. 
 PLEASE NOTE: You must have a certain attitude when using this program. Use it experimentally, by ear. 
 Do not try to understand what happens - even the programmer can't explain it in many cases.</code></pre>
+          </div>
+        </div>
+      </div>
     </div>
-    </div>
-  </div>
-  
-  <script type="module">
-    import init, { WasmAudioProcessor } from './pkg/mammut_fft_web.js';
-    
-    let audioProcessor = null;
-    let audioContext = null;
-    let audioBuffer = null;
-    let audioSource = null;
-    let canvasContext = null;
-    let selectedFileName = "";
-    
-    async function updateStatus(message, isError = false, isSuccess = false) {
-      const statusEl = document.getElementById('status');
-      statusEl.textContent = message;
-      statusEl.className = 'status';
-      if (isError) statusEl.classList.add('error');
-      if (isSuccess) statusEl.classList.add('success');
-      console.log(isError ? 'ERROR: ' : 'Status: ', message);
-    }
-    
-    async function initialize() {
-      try {
-        updateStatus('Initializing WASM module...');
-        
-        // Initialize the WASM module
-        await init();
-        console.log("WASM module loaded");
-        
-        // Create the audio processor
-        audioProcessor = new WasmAudioProcessor();
-        console.log("Audio processor created");
-        
-        // Set up the canvas
-        const canvas = document.getElementById('spectrumCanvas');
-        canvasContext = canvas.getContext('2d');
-        
-        // Set up single file button handling
-        const fileInput = document.getElementById('audioFile');
-        const openAudioButton = document.getElementById('openAudioButton');
-        const uploadSection = document.getElementById('uploadSection');
-        
-        openAudioButton.addEventListener('click', () => {
-          fileInput.click();
-        });
-        
-        fileInput.addEventListener('change', (e) => {
-          if (e.target.files.length > 0) {
-            handleSelectedFile(e.target.files[0]);
+
+    <script type="module">
+      import init, { WasmAudioProcessor } from "./pkg/mammut_fft_web.js";
+
+      let audioProcessor = null;
+      let audioContext = null;
+      let audioBuffer = null;
+      let audioSource = null;
+      let canvasContext = null;
+      let selectedFileName = "";
+
+      async function updateStatus(message, isError = false, isSuccess = false) {
+        const statusEl = document.getElementById("status");
+        statusEl.textContent = message;
+        statusEl.className = "status";
+        if (isError) statusEl.classList.add("error");
+        if (isSuccess) statusEl.classList.add("success");
+        console.log(isError ? "ERROR: " : "Status: ", message);
+      }
+
+      async function initialize() {
+        try {
+          updateStatus("Initializing WASM module...");
+
+          // Initialize the WASM module
+          await init();
+          console.log("WASM module loaded");
+
+          // Create the audio processor
+          audioProcessor = new WasmAudioProcessor();
+          console.log("Audio processor created");
+
+          // Set up the canvas
+          const canvas = document.getElementById("spectrumCanvas");
+          canvasContext = canvas.getContext("2d");
+
+          // Set up single file button handling
+          const fileInput = document.getElementById("audioFile");
+          const openAudioButton = document.getElementById("openAudioButton");
+          const uploadSection = document.getElementById("uploadSection");
+
+          openAudioButton.addEventListener("click", () => {
+            fileInput.click();
+          });
+
+          fileInput.addEventListener("change", (e) => {
+            if (e.target.files.length > 0) {
+              handleSelectedFile(e.target.files[0]);
+            }
+          });
+
+          // Set up drag and drop handling
+          // Prevent default behaviors
+          ["dragenter", "dragover", "dragleave", "drop"].forEach(
+            (eventName) => {
+              uploadSection.addEventListener(eventName, preventDefaults, false);
+            },
+          );
+
+          function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
           }
-        });
-        
-        // Set up drag and drop handling
-        // Prevent default behaviors
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-          uploadSection.addEventListener(eventName, preventDefaults, false);
-        });
-        
-        function preventDefaults(e) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-        
-        // Add visual feedback for drag operations
-        ['dragenter', 'dragover'].forEach(eventName => {
-          uploadSection.addEventListener(eventName, highlight, false);
-        });
-        
-        ['dragleave', 'drop'].forEach(eventName => {
-          uploadSection.addEventListener(eventName, unhighlight, false);
-        });
-        
-        function highlight() {
-          uploadSection.classList.add('drag-over');
-        }
-        
-        function unhighlight() {
-          uploadSection.classList.remove('drag-over');
-        }
-        
-        // Handle the dropped files
-        uploadSection.addEventListener('drop', handleDrop, false);
-        
-        function handleDrop(e) {
-          const dt = e.dataTransfer;
-          const files = dt.files;
-          
-          if (files.length > 0) {
-            const file = files[0];
-            
-            // Check if it's a wav file
-            if (file.type === 'audio/wav' || file.name.toLowerCase().endsWith('.wav')) {
-              handleSelectedFile(file);
-            } else {
-              updateStatus('Please drop a WAV file only', true);
+
+          // Add visual feedback for drag operations
+          ["dragenter", "dragover"].forEach((eventName) => {
+            uploadSection.addEventListener(eventName, highlight, false);
+          });
+
+          ["dragleave", "drop"].forEach((eventName) => {
+            uploadSection.addEventListener(eventName, unhighlight, false);
+          });
+
+          function highlight() {
+            uploadSection.classList.add("drag-over");
+          }
+
+          function unhighlight() {
+            uploadSection.classList.remove("drag-over");
+          }
+
+          // Handle the dropped files
+          uploadSection.addEventListener("drop", handleDrop, false);
+
+          function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            if (files.length > 0) {
+              const file = files[0];
+
+              // Check if it's a wav file
+              //if (
+              //  file.type === "audio/wav" ||
+              //  file.name.toLowerCase().endsWith(".wav")
+              //) {
+                handleSelectedFile(file);
+              // else {
+              //  updateStatus("Please drop a WAV file only", true);
+              //}
             }
           }
+
+          // Set up other event listeners
+          document
+            .getElementById("resetButton")
+            .addEventListener("click", resetAudio);
+          document
+            .getElementById("processButton")
+            .addEventListener("click", processAudio);
+          document
+            .getElementById("downloadButton")
+            .addEventListener("click", downloadAudio);
+          document
+            .getElementById("applyPowerButton")
+            .addEventListener("click", applyPower);
+          document
+            .getElementById("applyFilterButton")
+            .addEventListener("click", applyFilter);
+          document
+            .getElementById("applyPhaseMultiplyButton")
+            .addEventListener("click", applyPhaseMultiply);
+          document
+            .getElementById("applySwapBinsButton")
+            .addEventListener("click", applySwapBins);
+          document
+            .getElementById("applyChannelSwapButton")
+            .addEventListener("click", applyChannelSwap);
+          document
+            .getElementById("applySplitButton")
+            .addEventListener("click", applySplit);
+          document
+            .getElementById("applySpectrumShiftButton")
+            .addEventListener("click", applySpectrumShift);
+          document
+            .getElementById("applyStretchButton")
+            .addEventListener("click", applyStretch);
+          document
+            .getElementById("applyWobbleButton")
+            .addEventListener("click", applyWobble);
+          document
+            .getElementById("applyThresholdButton")
+            .addEventListener("click", applyThresholdFilter);
+          document
+            .getElementById("applyDerivateButton")
+            .addEventListener("click", applyAmplitudeDerivative);
+          document
+            .getElementById("applyKeepPeaksButton")
+            .addEventListener("click", applyKeepPeaks);
+          document
+            .getElementById("applyChordFilterButton")
+            .addEventListener("click", applyChordFilter);
+
+          // Filter type change handler
+          document
+            .getElementById("filterType")
+            .addEventListener("change", function () {
+              const highCutoffContainer = document.getElementById(
+                "highCutoffContainer",
+              );
+              highCutoffContainer.style.display =
+                this.value === "bandpass" ? "block" : "none";
+            });
+
+          // Slider value updates
+          document
+            .getElementById("powerSlider")
+            .addEventListener("input", function () {
+              document.getElementById("powerValue").textContent = this.value;
+            });
+
+          document
+            .getElementById("cutoffLow")
+            .addEventListener("input", function () {
+              document.getElementById("cutoffLowValue").textContent =
+                `${this.value} Hz`;
+            });
+
+          document
+            .getElementById("cutoffHigh")
+            .addEventListener("input", function () {
+              document.getElementById("cutoffHighValue").textContent =
+                `${this.value} Hz`;
+            });
+
+          document
+            .getElementById("phaseMultiplySlider")
+            .addEventListener("input", function () {
+              document.getElementById("phaseMultiplyValue").textContent =
+                this.value;
+            });
+
+          document
+            .getElementById("swapBlockSize")
+            .addEventListener("input", function () {
+              document.getElementById("swapBlockSizeValue").textContent =
+                this.value + "%";
+            });
+
+          document
+            .getElementById("swapRepeat")
+            .addEventListener("input", function () {
+              document.getElementById("swapRepeatValue").textContent =
+                this.value;
+            });
+
+          document
+            .getElementById("channelSwapRepeat")
+            .addEventListener("input", function () {
+              document.getElementById("channelSwapRepeatValue").textContent =
+                this.value;
+            });
+
+          document
+            .getElementById("spectrumShiftValue")
+            .addEventListener("input", function () {
+              document.getElementById("spectrumShiftValueDisplay").textContent =
+                this.value + " Hz";
+            });
+
+          document
+            .getElementById("stretchExponent")
+            .addEventListener("input", function () {
+              document.getElementById("stretchExponentDisplay").textContent =
+                this.value;
+            });
+
+          document
+            .getElementById("wobbleFrequency")
+            .addEventListener("input", function () {
+              document.getElementById("wobbleFrequencyDisplay").textContent =
+                this.value;
+            });
+
+          document
+            .getElementById("wobbleAmplitude")
+            .addEventListener("input", function () {
+              document.getElementById("wobbleAmplitudeDisplay").textContent =
+                this.value;
+            });
+
+          document
+            .getElementById("thresholdLevel")
+            .addEventListener("input", function () {
+              document.getElementById("thresholdLevelDisplay").textContent =
+                this.value;
+            });
+
+          document
+            .getElementById("derivateMultiplier")
+            .addEventListener("input", function () {
+              document.getElementById("derivateMultiplierDisplay").textContent =
+                this.value;
+            });
+
+          // Chord Filter Sliders
+          document
+            .getElementById("chordAmp1")
+            .addEventListener("input", function () {
+              document.getElementById("chordAmp1Value").textContent =
+                this.value;
+            });
+
+          document
+            .getElementById("chordAmp2")
+            .addEventListener("input", function () {
+              document.getElementById("chordAmp2Value").textContent =
+                this.value;
+            });
+
+          document
+            .getElementById("chordAmp3")
+            .addEventListener("input", function () {
+              document.getElementById("chordAmp3Value").textContent =
+                this.value;
+            });
+
+          document
+            .getElementById("chordAmp4")
+            .addEventListener("input", function () {
+              document.getElementById("chordAmp4Value").textContent =
+                this.value;
+            });
+
+          document
+            .getElementById("chordAmp5")
+            .addEventListener("input", function () {
+              document.getElementById("chordAmp5Value").textContent =
+                this.value;
+            });
+
+          document
+            .getElementById("chordWidth")
+            .addEventListener("input", function () {
+              document.getElementById("chordWidthValue").textContent =
+                this.value + " cents";
+            });
+
+          document
+            .getElementById("chordHarmonics")
+            .addEventListener("input", function () {
+              document.getElementById("chordHarmonicsValue").textContent =
+                this.value;
+            });
+
+          setupTabs();
+
+          // Draw empty grid on the canvas
+          drawEmptySpectrum();
+
+          updateStatus(
+            "Ready to load audio file. Choose or drop a WAV file to begin.",
+            false,
+            true,
+          );
+          console.log("Initialization complete");
+        } catch (error) {
+          updateStatus("Initialization error: " + error.message, true);
+          console.error("Initialization error:", error);
         }
-        
-        // Set up other event listeners
-        document.getElementById('resetButton').addEventListener('click', resetAudio);
-        document.getElementById('processButton').addEventListener('click', processAudio);
-        document.getElementById('downloadButton').addEventListener('click', downloadAudio);
-        document.getElementById('applyPowerButton').addEventListener('click', applyPower);
-        document.getElementById('applyFilterButton').addEventListener('click', applyFilter);
-        document.getElementById('applyPhaseMultiplyButton').addEventListener('click', applyPhaseMultiply);
-        document.getElementById('applySwapBinsButton').addEventListener('click', applySwapBins);
-        document.getElementById('applyChannelSwapButton').addEventListener('click', applyChannelSwap);
-        document.getElementById('applySplitButton').addEventListener('click', applySplit);
-        document.getElementById('applySpectrumShiftButton').addEventListener('click', applySpectrumShift);
-        document.getElementById('applyStretchButton').addEventListener('click', applyStretch);
-        document.getElementById('applyWobbleButton').addEventListener('click', applyWobble);
-        document.getElementById('applyThresholdButton').addEventListener('click', applyThresholdFilter);
-        document.getElementById('applyDerivateButton').addEventListener('click', applyAmplitudeDerivative);
-        document.getElementById('applyKeepPeaksButton').addEventListener('click', applyKeepPeaks);
-
-        
-        // Filter type change handler
-        document.getElementById('filterType').addEventListener('change', function() {
-          const highCutoffContainer = document.getElementById('highCutoffContainer');
-          highCutoffContainer.style.display = this.value === 'bandpass' ? 'block' : 'none';
-        });
-        
-        // Slider value updates
-        document.getElementById('powerSlider').addEventListener('input', function() {
-          document.getElementById('powerValue').textContent = this.value;
-        });
-        
-        document.getElementById('cutoffLow').addEventListener('input', function() {
-          document.getElementById('cutoffLowValue').textContent = `${this.value} Hz`;
-        });
-        
-        document.getElementById('cutoffHigh').addEventListener('input', function() {
-          document.getElementById('cutoffHighValue').textContent = `${this.value} Hz`;
-        });
-        
-        document.getElementById('phaseMultiplySlider').addEventListener('input', function() {
-          document.getElementById('phaseMultiplyValue').textContent = this.value;
-        });
-
-        document.getElementById('swapBlockSize').addEventListener('input', function() {
-          document.getElementById('swapBlockSizeValue').textContent = this.value + '%';
-        });
-    
-        document.getElementById('swapRepeat').addEventListener('input', function() {
-          document.getElementById('swapRepeatValue').textContent = this.value;
-        });
-
-        document.getElementById('channelSwapRepeat').addEventListener('input', function() {
-          document.getElementById('channelSwapRepeatValue').textContent = this.value;
-        });
-
-        document.getElementById('spectrumShiftValue').addEventListener('input', function() {
-          document.getElementById('spectrumShiftValueDisplay').textContent = this.value + ' Hz';
-        });        
-
-        document.getElementById('stretchExponent').addEventListener('input', function() {
-          document.getElementById('stretchExponentDisplay').textContent = this.value;
-        });        
-
-        document.getElementById('wobbleFrequency').addEventListener('input', function() {
-          document.getElementById('wobbleFrequencyDisplay').textContent = this.value;
-        });
-
-        document.getElementById('wobbleAmplitude').addEventListener('input', function() {
-          document.getElementById('wobbleAmplitudeDisplay').textContent = this.value;
-        });   
-        
-        document.getElementById('thresholdLevel').addEventListener('input', function() {
-         document.getElementById('thresholdLevelDisplay').textContent = this.value;
-        });        
-
-        document.getElementById('derivateMultiplier').addEventListener('input', function() {
-          document.getElementById('derivateMultiplierDisplay').textContent = this.value;
-        });     
-        
-        setupTabs();
-        
-        // Draw empty grid on the canvas
-        drawEmptySpectrum();
-        
-        updateStatus('Ready to load audio file. Choose or drop a WAV file to begin.', false, true);
-        console.log("Initialization complete");
-      } catch (error) {
-        updateStatus('Initialization error: ' + error.message, true);
-        console.error("Initialization error:", error);
       }
-    }
 
-  // Tab switching functionality
-  function setupTabs() {
-    const tabButtons = document.querySelectorAll('.tab-button');
-    const tabContents = document.querySelectorAll('.tab-content');
-  
-    tabButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      // Remove active class from all buttons and contents
-      tabButtons.forEach(btn => btn.classList.remove('active'));
-      tabContents.forEach(content => content.classList.remove('active'));
-      
-      // Add active class to current button
-      button.classList.add('active');
-      
-      // Show the corresponding tab content
-      const tabId = button.getAttribute('data-tab');
-      document.getElementById(`${tabId}-tab`).classList.add('active');
-    });
-    });
-  }    
-    
-    // Unified function to handle a selected file (from input or drag)
-    function handleSelectedFile(file) {
-      selectedFileName = file.name;
-      const fileSize = (file.size / 1024).toFixed(1);
-      document.getElementById('fileInfo').textContent = `Selected: ${selectedFileName} (${fileSize} KB)`;
-      
-      // Automatically load the audio
-      loadAudio(file);
-    }
-    
-    async function loadAudio(directFile = null) {
-      try {
-        updateStatus('Loading audio file...');
-        
-        // Use the provided file or get it from the input
-        const file = directFile || document.getElementById('audioFile').files[0];
-        
-        if (!file) {
-          updateStatus('Please select a file first', true);
-          return;
-        }
-        
-        updateStatus(`Reading file: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
-        
-        // Create AudioContext (if not already created)
-        if (!audioContext) {
-          audioContext = new (window.AudioContext || window.webkitAudioContext)();
-          updateStatus(`Created audio context with sample rate: ${audioContext.sampleRate} Hz`);
-        }
-        
-        // Read the file as ArrayBuffer
-        updateStatus('Reading file as ArrayBuffer...');
-        const arrayBuffer = await file.arrayBuffer();
-        updateStatus(`File loaded into memory (${(arrayBuffer.byteLength / 1024).toFixed(1)} KB)`);
-        
-        // Decode the audio data
-        updateStatus('Decoding audio data...');
+      // Tab switching functionality
+      function setupTabs() {
+        const tabButtons = document.querySelectorAll(".tab-button");
+        const tabContents = document.querySelectorAll(".tab-content");
+
+        tabButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            // Remove active class from all buttons and contents
+            tabButtons.forEach((btn) => btn.classList.remove("active"));
+            tabContents.forEach((content) =>
+              content.classList.remove("active"),
+            );
+
+            // Add active class to current button
+            button.classList.add("active");
+
+            // Show the corresponding tab content
+            const tabId = button.getAttribute("data-tab");
+            document.getElementById(`${tabId}-tab`).classList.add("active");
+          });
+        });
+      }
+
+      // Unified function to handle a selected file (from input or drag)
+      function handleSelectedFile(file) {
+        selectedFileName = file.name;
+        const fileSize = (file.size / 1024).toFixed(1);
+        document.getElementById("fileInfo").textContent =
+          `Selected: ${selectedFileName} (${fileSize} KB)`;
+
+        // Automatically load the audio
+        loadAudio(file);
+      }
+
+      async function loadAudio(directFile = null) {
         try {
-          audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        } catch (decodeError) {
-          updateStatus(`Failed to decode audio: ${decodeError.message}. Make sure it's a valid WAV file.`, true);
-          console.error("Decode error:", decodeError);
-          return;
-        }
-        
-        updateStatus(`Audio decoded: ${audioBuffer.numberOfChannels} channels, ${audioBuffer.length} samples, ${audioBuffer.sampleRate} Hz`);
-        
-        // Prepare data for our WASM module
-        const numChannels = audioBuffer.numberOfChannels;
-        const length = audioBuffer.length;
-        const sampleRate = audioBuffer.sampleRate;
-        
-        // Create a Float32Array with all channels interleaved
-        updateStatus('Preparing audio data for processing...');
-        const interleavedData = new Float32Array(numChannels * length);
-        
-        for (let channel = 0; channel < numChannels; channel++) {
-          const channelData = audioBuffer.getChannelData(channel);
-          
-          for (let i = 0; i < length; i++) {
-            interleavedData[i * numChannels + channel] = channelData[i];
+          updateStatus("Loading audio file...");
+
+          // Use the provided file or get it from the input
+          const file =
+            directFile || document.getElementById("audioFile").files[0];
+
+          if (!file) {
+            updateStatus("Please select a file first", true);
+            return;
           }
+
+          updateStatus(
+            `Reading file: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
+          );
+
+          // Create AudioContext (if not already created)
+          if (!audioContext) {
+            audioContext = new (window.AudioContext ||
+              window.webkitAudioContext)();
+            updateStatus(
+              `Created audio context with sample rate: ${audioContext.sampleRate} Hz`,
+            );
+          }
+
+          // Read the file as ArrayBuffer
+          updateStatus("Reading file as ArrayBuffer...");
+          const arrayBuffer = await file.arrayBuffer();
+          updateStatus(
+            `File loaded into memory (${(arrayBuffer.byteLength / 1024).toFixed(1)} KB)`,
+          );
+
+          // Decode the audio data
+          updateStatus("Decoding audio data...");
+          const uint8Array = new Uint8Array(arrayBuffer);
+
+          try {
+            audioProcessor.read_audio_bytes(uint8Array);
+          } catch (decodeError) {
+            updateStatus(
+              `Failed to decode audio: ${decodeError.message}. Make sure it's a valid sound file.`,
+              true,
+            );
+            console.error("Decode error:", decodeError);
+            return;
+          }
+
+          updateStatus(`Audio decoded: ${audioProcessor.get_info()}`);
+
+          // Display audio info
+          try {
+            const info = audioProcessor.get_info();
+            console.log("Audio info:", info);
+            const duration = info.time_data
+              ? info.time_data.duration_seconds.toFixed(2) + "s"
+              : "unknown duration";
+            updateStatus(
+              `Audio loaded: ${info.channels} channels, ${info.sample_rate} Hz, ${duration}`,
+              false,
+              true,
+            );
+          } catch (infoError) {
+            console.error("Error getting audio info:", infoError);
+          }
+
+          // Show controls
+          document.querySelector(".main-controls").style.display = "block";
+          document.querySelector(".operations-tabs").style.display = "block";
+          //document.querySelector('.audio-controls').style.display = 'flex';
+          //document.querySelector('.controls').style.display = 'grid';
+
+          // Update the audio player
+          updateStatus("Preparing audio player...");
+          await updateAudioPlayer();
+
+          // Draw the spectrum
+          updateStatus("Drawing spectrum visualization...");
+          drawSpectrum();
+
+          updateStatus("Audio loaded and ready for processing!", false, true);
+        } catch (error) {
+          updateStatus(`Error loading audio: ${error.message}`, true);
+          console.error("Error loading audio:", error);
         }
-        
-        // Load the data into our processor
-        updateStatus('Loading data into FFT processor...');
+      }
+
+      function resetAudio() {
         try {
-          audioProcessor.load_audio_data(numChannels, sampleRate, interleavedData);
-        } catch (loadError) {
-          updateStatus(`Failed to load data into processor: ${loadError}`, true);
-          console.error("Processor load error:", loadError);
-          return;
+          if (!audioProcessor) return;
+
+          updateStatus("Resetting audio to original state...");
+          audioProcessor.reset();
+          updateAudioPlayer();
+          drawSpectrum();
+
+          updateStatus("Audio reset to original state", false, true);
+        } catch (error) {
+          updateStatus(`Error resetting audio: ${error.message}`, true);
+          console.error("Error resetting audio:", error);
         }
-        
-        // Display audio info
+      }
+
+      function applyPower() {
         try {
+          if (!audioProcessor) {
+            updateStatus("No audio loaded", true);
+            return;
+          }
+
+          const power = parseFloat(
+            document.getElementById("powerSlider").value,
+          );
+          updateStatus(`Applying power function with exponent: ${power}...`);
+          audioProcessor.apply_pow(power);
+
+          // Update visualization
+          drawSpectrum();
+          updateStatus(
+            `Applied power function with exponent: ${power}`,
+            false,
+            true,
+          );
+        } catch (error) {
+          updateStatus(`Error applying power function: ${error.message}`, true);
+          console.error("Error applying power function:", error);
+        }
+      }
+
+      function applyFilter() {
+        try {
+          if (!audioProcessor) {
+            updateStatus("No audio loaded", true);
+            return;
+          }
+
+          const filterType = document.getElementById("filterType").value;
+          const lowCutoff = parseFloat(
+            document.getElementById("cutoffLow").value,
+          );
+          const highCutoff = parseFloat(
+            document.getElementById("cutoffHigh").value,
+          );
+
+          switch (filterType) {
+            case "lowpass":
+              updateStatus(`Applying lowpass filter at ${lowCutoff} Hz...`);
+              audioProcessor.apply_lowpass(lowCutoff);
+              updateStatus(
+                `Applied lowpass filter at ${lowCutoff} Hz`,
+                false,
+                true,
+              );
+              break;
+            case "highpass":
+              updateStatus(`Applying highpass filter at ${lowCutoff} Hz...`);
+              audioProcessor.apply_highpass(lowCutoff);
+              updateStatus(
+                `Applied highpass filter at ${lowCutoff} Hz`,
+                false,
+                true,
+              );
+              break;
+            case "bandpass":
+              updateStatus(
+                `Applying bandpass filter from ${lowCutoff} Hz to ${highCutoff} Hz...`,
+              );
+              audioProcessor.apply_bandpass(lowCutoff, highCutoff);
+              updateStatus(
+                `Applied bandpass filter from ${lowCutoff} Hz to ${highCutoff} Hz`,
+                false,
+                true,
+              );
+              break;
+          }
+
+          drawSpectrum();
+        } catch (error) {
+          updateStatus(`Error applying filter: ${error.message}`, true);
+          console.error("Error applying filter:", error);
+        }
+      }
+
+      function applyPhaseMultiply() {
+        try {
+          if (!audioProcessor) {
+            updateStatus("No audio loaded", true);
+            return;
+          }
+
+          const factor = parseFloat(
+            document.getElementById("phaseMultiplySlider").value,
+          );
+          updateStatus(
+            `Applying phase multiplication with factor: ${factor}...`,
+          );
+          audioProcessor.apply_phase_multiply(factor);
+
+          drawSpectrum();
+          updateStatus(
+            `Applied phase multiplication with factor: ${factor}`,
+            false,
+            true,
+          );
+        } catch (error) {
+          updateStatus(
+            `Error applying phase multiplication: ${error.message}`,
+            true,
+          );
+          console.error("Error applying phase multiplication:", error);
+        }
+      }
+
+      function applySwapBins() {
+        try {
+          if (!audioProcessor) {
+            updateStatus("No audio loaded", true);
+            return;
+          }
+
+          const blockSize = parseFloat(
+            document.getElementById("swapBlockSize").value,
+          );
+          const repeat = parseFloat(
+            document.getElementById("swapRepeat").value,
+          );
+
+          updateStatus(
+            `Applying frequency bin swapping with block size: ${blockSize}%, repeats: ${repeat}...`,
+          );
+
+          audioProcessor.swap_bins(blockSize, repeat);
+
+          drawSpectrum();
+          updateStatus(`Frequency bins swapped successfully`, false, true);
+        } catch (error) {
+          updateStatus(`Error swapping frequency bins: ${error.message}`, true);
+          console.error("Error swapping frequency bins:", error);
+        }
+      }
+
+      function applyChannelSwap() {
+        try {
+          if (!audioProcessor) {
+            updateStatus("No audio loaded", true);
+            return;
+          }
+
+          // Get the current channel count from the audio info
           const info = audioProcessor.get_info();
-          console.log("Audio info:", info);
-          const duration = info.time_data ? info.time_data.duration_seconds.toFixed(2) + 's' : 'unknown duration';
-          updateStatus(`Audio loaded: ${info.channels} channels, ${info.sample_rate} Hz, ${duration}`, false, true);
-        } catch (infoError) {
-          console.error("Error getting audio info:", infoError);
-        }
-        
-        // Show controls
-        document.querySelector('.main-controls').style.display = 'block';
-        document.querySelector('.operations-tabs').style.display = 'block'; 
-        //document.querySelector('.audio-controls').style.display = 'flex';
-        //document.querySelector('.controls').style.display = 'grid';
-        
-        // Update the audio player
-        updateStatus('Preparing audio player...');
-        await updateAudioPlayer();
-        
-        // Draw the spectrum
-        updateStatus('Drawing spectrum visualization...');
-        drawSpectrum();
-        
-        updateStatus('Audio loaded and ready for processing!', false, true);
-      } catch (error) {
-        updateStatus(`Error loading audio: ${error.message}`, true);
-        console.error("Error loading audio:", error);
-      }
-    }
-    
-    function resetAudio() {
-      try {
-        if (!audioProcessor) return;
-        
-        updateStatus('Resetting audio to original state...');
-        audioProcessor.reset();
-        updateAudioPlayer();
-        drawSpectrum();
-        
-        updateStatus("Audio reset to original state", false, true);
-      } catch (error) {
-        updateStatus(`Error resetting audio: ${error.message}`, true);
-        console.error("Error resetting audio:", error);
-      }
-    }
-    
-    function applyPower() {
-      try {
-        if (!audioProcessor) {
-          updateStatus('No audio loaded', true);
-          return;
-        }
-        
-        const power = parseFloat(document.getElementById('powerSlider').value);
-        updateStatus(`Applying power function with exponent: ${power}...`);
-        audioProcessor.apply_pow(power);
-        
-        // Update visualization
-        drawSpectrum();
-        updateStatus(`Applied power function with exponent: ${power}`, false, true);
-      } catch (error) {
-        updateStatus(`Error applying power function: ${error.message}`, true);
-        console.error("Error applying power function:", error);
-      }
-    }
-    
-    function applyFilter() {
-      try {
-        if (!audioProcessor) {
-          updateStatus('No audio loaded', true);
-          return;
-        }
-        
-        const filterType = document.getElementById('filterType').value;
-        const lowCutoff = parseFloat(document.getElementById('cutoffLow').value);
-        const highCutoff = parseFloat(document.getElementById('cutoffHigh').value);
-        
-        switch (filterType) {
-          case 'lowpass':
-            updateStatus(`Applying lowpass filter at ${lowCutoff} Hz...`);
-            audioProcessor.apply_lowpass(lowCutoff);
-            updateStatus(`Applied lowpass filter at ${lowCutoff} Hz`, false, true);
-            break;
-          case 'highpass':
-            updateStatus(`Applying highpass filter at ${lowCutoff} Hz...`);
-            audioProcessor.apply_highpass(lowCutoff);
-            updateStatus(`Applied highpass filter at ${lowCutoff} Hz`, false, true);
-            break;
-          case 'bandpass':
-            updateStatus(`Applying bandpass filter from ${lowCutoff} Hz to ${highCutoff} Hz...`);
-            audioProcessor.apply_bandpass(lowCutoff, highCutoff);
-            updateStatus(`Applied bandpass filter from ${lowCutoff} Hz to ${highCutoff} Hz`, false, true);
-            break;
-        }
-        
-        drawSpectrum();
-      } catch (error) {
-        updateStatus(`Error applying filter: ${error.message}`, true);
-        console.error("Error applying filter:", error);
-      }
-    }
-    
-    function applyPhaseMultiply() {
-      try {
-        if (!audioProcessor) {
-          updateStatus('No audio loaded', true);
-          return;
-        }
-        
-        const factor = parseFloat(document.getElementById('phaseMultiplySlider').value);
-        updateStatus(`Applying phase multiplication with factor: ${factor}...`);
-        audioProcessor.apply_phase_multiply(factor);
-        
-        drawSpectrum();
-        updateStatus(`Applied phase multiplication with factor: ${factor}`, false, true);
-      } catch (error) {
-        updateStatus(`Error applying phase multiplication: ${error.message}`, true);
-        console.error("Error applying phase multiplication:", error);
-      }
-    }
-
-    function applySwapBins() {
-      try {
-        if (!audioProcessor) {
-          updateStatus('No audio loaded', true);
-          return;
-        }
-        
-        const blockSize = parseFloat(document.getElementById('swapBlockSize').value);
-        const repeat = parseFloat(document.getElementById('swapRepeat').value);
-        
-        updateStatus(`Applying frequency bin swapping with block size: ${blockSize}%, repeats: ${repeat}...`);
-        
-        audioProcessor.swap_bins(blockSize, repeat);
-        
-        drawSpectrum();
-        updateStatus(`Frequency bins swapped successfully`, false, true);
-      } catch (error) {
-        updateStatus(`Error swapping frequency bins: ${error.message}`, true);
-        console.error("Error swapping frequency bins:", error);
-      }
-    }    
-
-    function applyChannelSwap() {
-      try {
-        if (!audioProcessor) {
-          updateStatus('No audio loaded', true);
-          return;
-        }
-        
-        // Get the current channel count from the audio info
-        const info = audioProcessor.get_info();
-        if (info.channels < 2) {
-          updateStatus('Channel swapping requires at least 2 channels (stereo audio)', true);
-          return;
-        }
-        
-        const repeat = parseFloat(document.getElementById('channelSwapRepeat').value);
-        
-        updateStatus(`Applying channel bin swapping with ${repeat} repeats...`);
-        
-        audioProcessor.swap_channels(repeat);
-        
-        drawSpectrum();
-        updateStatus(`Channel bins swapped successfully`, false, true);
-      } catch (error) {
-        updateStatus(`Error swapping channel bins: ${error.message}`, true);
-        console.error("Error swapping channel bins:", error);
-      }
-    }
-
-    function applySpectrumShift() {
-    try {
-        if (!audioProcessor) {
-            updateStatus('No audio loaded', true);
+          if (info.channels < 2) {
+            updateStatus(
+              "Channel swapping requires at least 2 channels (stereo audio)",
+              true,
+            );
             return;
-        }
-        
-        const shiftAmount = parseFloat(document.getElementById('spectrumShiftValue').value);
-        
-        updateStatus(`Applying spectrum shift of ${shiftAmount} Hz...`);
-        
-        audioProcessor.apply_spectrum_shift(shiftAmount);
-        
-        drawSpectrum();
-        updateStatus(`Spectrum shifted by ${shiftAmount} Hz successfully`, false, true);
-      } catch (error) {
-        updateStatus(`Error applying spectrum shift: ${error.message}`, true);
-        console.error("Error applying spectrum shift:", error);
-      }
-    }    
-
-    function applyStretch() {
-    try {
-        if (!audioProcessor) {
-            updateStatus('No audio loaded', true);
-            return;
-        }
-        
-        const exponent = parseFloat(document.getElementById('stretchExponent').value);
-        
-        updateStatus(`Applying frequency stretch with exponent ${exponent}...`);
-        
-        audioProcessor.apply_stretch(exponent);
-        
-        drawSpectrum();
-        updateStatus(`Frequency spectrum stretched successfully`, false, true);
-      } catch (error) {
-        updateStatus(`Error applying stretch: ${error.message}`, true);
-        console.error("Error applying stretch:", error);
-      }
-    }   
-    
-    function applyWobble() {
-    try {
-        if (!audioProcessor) {
-            updateStatus('No audio loaded', true);
-            return;
-        }
-        
-        const frequency = parseFloat(document.getElementById('wobbleFrequency').value);
-        const amplitude = parseFloat(document.getElementById('wobbleAmplitude').value);
-        
-        updateStatus(`Applying wobble effect with frequency ${frequency} and amplitude ${amplitude}...`);
-        
-        audioProcessor.apply_wobble(frequency, amplitude);
-        
-        drawSpectrum();
-        updateStatus(`Wobble effect applied successfully`, false, true);
-      } catch (error) {
-        updateStatus(`Error applying wobble: ${error.message}`, true);
-        console.error("Error applying wobble:", error);
-      }
-    }    
-
-    function applyThresholdFilter() {
-    try {
-        if (!audioProcessor) {
-            updateStatus('No audio loaded', true);
-            return;
-        }
-        
-        const level = parseFloat(document.getElementById('thresholdLevel').value);
-        const removeAbove = document.getElementById('removeAboveThreshold').checked;
-        
-        updateStatus(`Applying threshold filter with level ${level}, removing components ${removeAbove ? 'above' : 'below'} threshold...`);
-        
-        audioProcessor.apply_threshold(level, removeAbove);
-        
-        drawSpectrum();
-        updateStatus(`Threshold filter applied successfully`, false, true);
-      } catch (error) {
-        updateStatus(`Error applying threshold filter: ${error.message}`, true);
-        console.error("Error applying threshold filter:", error);
-      }
-    }    
-
-    function applyAmplitudeDerivative() {
-    try {
-        if (!audioProcessor) {
-            updateStatus('No audio loaded', true);
-            return;
-        }
-        
-        const multiplier = parseFloat(document.getElementById('derivateMultiplier').value);
-        
-        updateStatus(`Applying amplitude derivative with multiplier ${multiplier}...`);
-        
-        audioProcessor.apply_amplitude_derivative(multiplier);
-        
-        drawSpectrum();
-        updateStatus(`Amplitude derivative applied successfully`, false, true);
-      } catch (error) {
-        updateStatus(`Error applying amplitude derivative: ${error.message}`, true);
-        console.error("Error applying amplitude derivative:", error);
-      }
-    }    
-
-    function applyKeepPeaks() {
-    try {
-        if (!audioProcessor) {
-            updateStatus('No audio loaded', true);
-            return;
-        }
-        
-        updateStatus(`Applying keep peaks filter...`);
-        
-        audioProcessor.keep_peaks();
-        
-        drawSpectrum();
-        updateStatus(`Keep peaks filter applied successfully`, false, true);
-      } catch (error) {
-        updateStatus(`Error applying keep peaks filter: ${error.message}`, true);
-        console.error("Error applying keep peaks filter:", error);
-      }
-    }    
-    
-    // Function to handle frequency spectrum splitting
-    async function applySplit() {
-      try {
-        if (!audioProcessor) {
-          updateStatus('No audio loaded', true);
-          return;
-        }
-        
-        const baseName = document.getElementById('splitBaseName').value || 'split';
-        const numParts = parseInt(document.getElementById('splitNumParts').value);
-        const groupSize = parseInt(document.getElementById('splitGroupSize').value);
-        
-        if (numParts < 2) {
-          updateStatus('Number of parts must be at least 2', true);
-          return;
-        }
-        
-        if (groupSize < 1) {
-          updateStatus('Group size must be at least 1', true);
-          return;
-        }
-        
-        updateStatus(`Preparing to split audio into ${numParts} parts with group size ${groupSize}...`);
-        
-        // Process each part sequentially
-        for (let i = 0; i < numParts; i++) {
-          // Prepare this part
-          updateStatus(`Preparing part ${i+1}/${numParts}...`);
-          try {
-            audioProcessor.prepare_split_part(i, numParts, groupSize);
-          } catch (prepareError) {
-            updateStatus(`Error preparing part ${i+1}: ${prepareError}`, true);
-            console.error(`Error preparing part ${i+1}:`, prepareError);
-            continue;
           }
-          
-          // Process the audio (apply IFFT)
-          updateStatus(`Performing inverse FFT for part ${i+1}...`);
-          try {
-            audioProcessor.perform_ifft();
-          } catch (ifftError) {
-            updateStatus(`Error performing inverse FFT for part ${i+1}: ${ifftError}`, true);
-            console.error(`Error performing inverse FFT for part ${i+1}:`, ifftError);
-            continue;
-          }
-          
-          // Generate WAV data and download
-          const filename = `${baseName}_${i}.wav`;
-          updateStatus(`Downloading part ${i+1} as ${filename}...`);
 
-          //await ! does not work to run this async as we will need to complete each file before next since we are reusing the buffer
-          downloadProcessedPart(filename);
-          
-          // Reset the split (not the full processor) to prepare for the next part
-          try {
-            audioProcessor.reset_split();
-          } catch (resetError) {
-            updateStatus(`Error resetting split: ${resetError}`, true);
-            console.error(`Error resetting split:`, resetError);
-            break;
-          }
+          const repeat = parseFloat(
+            document.getElementById("channelSwapRepeat").value,
+          );
+
+          updateStatus(
+            `Applying channel bin swapping with ${repeat} repeats...`,
+          );
+
+          audioProcessor.swap_channels(repeat);
+
+          drawSpectrum();
+          updateStatus(`Channel bins swapped successfully`, false, true);
+        } catch (error) {
+          updateStatus(`Error swapping channel bins: ${error.message}`, true);
+          console.error("Error swapping channel bins:", error);
         }
-
-        updateStatus('Frequency spectrum split completed successfully', false, true);
-
-      } catch (error) {
-        updateStatus(`Error splitting frequency spectrum: ${error.message}`, true);
-        console.error("Error splitting frequency spectrum:", error);
       }
-    }
-    
-    // Helper function to download a processed part
-    async function downloadProcessedPart(filename) {
-      try {
-        // Convert to 32-bit float WAV and get bytes
-        const wavData = audioProcessor.save_to_wav_bytes();
 
-        // Create and trigger download
-        const blob = new Blob([wavData], { type: 'audio/wav' });
-        const url = URL.createObjectURL(blob);
-        
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        
-        // Notify user that the download is about to start
-        updateStatus(`Downloading ${filename}...`, false, false);
-        
-        // Small delay to allow status message to show
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Clean up
-        setTimeout(() => URL.revokeObjectURL(url), 100);
-        
-        return true;
-      } catch (error) {
-        updateStatus(`Error downloading part: ${error.message}`, true);
-        console.error("Error downloading part:", error);
-        return false;
-      }
-    }
-    
-    async function processAudio() {
-      try {
-        if (!audioProcessor) {
-          updateStatus('No audio loaded', true);
-          return;
-        }
-        
-        updateStatus('Processing audio...');
-        
-        // Manually trigger IFFT in the processor
+      function applySpectrumShift() {
         try {
-          // First ask the processor to perform the IFFT
-          updateStatus('Performing inverse FFT...');
-          audioProcessor.perform_ifft();
-          updateStatus('IFFT completed successfully');
-        } catch (ifftError) {
-          updateStatus(`IFFT error: ${ifftError}. The audio might be corrupted.`, true);
-          console.error("IFFT error:", ifftError);
-          
-          // Try to reset the audio
-          try {
-            updateStatus('Attempting to reset the audio data...');
-            audioProcessor.reset();
-            updateStatus('Audio data reset. Please try a different operation.', false, true);
-            drawSpectrum();
-            return;
-          } catch (resetError) {
-            updateStatus(`Failed to reset audio: ${resetError}`, true);
-            console.error("Reset error:", resetError);
+          if (!audioProcessor) {
+            updateStatus("No audio loaded", true);
             return;
           }
+
+          const shiftAmount = parseFloat(
+            document.getElementById("spectrumShiftValue").value,
+          );
+
+          updateStatus(`Applying spectrum shift of ${shiftAmount} Hz...`);
+
+          audioProcessor.apply_spectrum_shift(shiftAmount);
+
+          drawSpectrum();
+          updateStatus(
+            `Spectrum shifted by ${shiftAmount} Hz successfully`,
+            false,
+            true,
+          );
+        } catch (error) {
+          updateStatus(`Error applying spectrum shift: ${error.message}`, true);
+          console.error("Error applying spectrum shift:", error);
         }
-        
-        // Update the audio player with the processed audio
-        updateStatus('Updating audio player...');
-        if (await updateAudioPlayer()) {
-          updateStatus('Audio processed and player updated successfully', false, true);
-        }
-      } catch (error) {
-        updateStatus(`Error processing audio: ${error.message}`, true);
-        console.error("Error processing audio:", error);
       }
-    }
-    
-    function downloadAudio() {
-      try {
-        if (!audioProcessor || !audioContext) {
-          updateStatus('No audio loaded', true);
-          return;
+
+      function applyStretch() {
+        try {
+          if (!audioProcessor) {
+            updateStatus("No audio loaded", true);
+            return;
+          }
+
+          const exponent = parseFloat(
+            document.getElementById("stretchExponent").value,
+          );
+
+          updateStatus(
+            `Applying frequency stretch with exponent ${exponent}...`,
+          );
+
+          audioProcessor.apply_stretch(exponent);
+
+          drawSpectrum();
+          updateStatus(
+            `Frequency spectrum stretched successfully`,
+            false,
+            true,
+          );
+        } catch (error) {
+          updateStatus(`Error applying stretch: ${error.message}`, true);
+          console.error("Error applying stretch:", error);
         }
-        
-        updateStatus('Preparing audio for download...');
-        
-        // Convert to 32-bit float WAV adn get bytes
-        const wavData = audioProcessor.save_to_wav_bytes();
-        
-        // Create a download link
-        const blob = new Blob([wavData], { type: 'audio/wav' });
-        const url = URL.createObjectURL(blob);
-        
-        // Generate a good filename
-        let outputFilename = 'processed_audio.wav';
-        if (selectedFileName) {
-          // Extract the name without extension and add "processed"
-          const baseName = selectedFileName.replace(/\.[^/.]+$/, "");
-          outputFilename = `${baseName}_processed.wav`;
-        }
-        
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = outputFilename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        updateStatus(`Processed audio downloaded as ${outputFilename}`, false, true);
-      } catch (error) {
-        updateStatus(`Error downloading audio: ${error.message}`, true);
-        console.error("Error downloading audio:", error);
       }
-    }
-    
-    async function updateAudioPlayer() {
-      try {
-        if (!audioProcessor || !audioContext) {
-          updateStatus('Audio processor or context not initialized', true);
-          return;
+
+      function applyWobble() {
+        try {
+          if (!audioProcessor) {
+            updateStatus("No audio loaded", true);
+            return;
+          }
+
+          const frequency = parseFloat(
+            document.getElementById("wobbleFrequency").value,
+          );
+          const amplitude = parseFloat(
+            document.getElementById("wobbleAmplitude").value,
+          );
+
+          updateStatus(
+            `Applying wobble effect with frequency ${frequency} and amplitude ${amplitude}...`,
+          );
+
+          audioProcessor.apply_wobble(frequency, amplitude);
+
+          drawSpectrum();
+          updateStatus(`Wobble effect applied successfully`, false, true);
+        } catch (error) {
+          updateStatus(`Error applying wobble: ${error.message}`, true);
+          console.error("Error applying wobble:", error);
         }
-        
-        // Stop any playing audio
-        if (audioSource) {
-          audioSource.stop();
-          audioSource = null;
+      }
+
+      function applyThresholdFilter() {
+        try {
+          if (!audioProcessor) {
+            updateStatus("No audio loaded", true);
+            return;
+          }
+
+          const level = parseFloat(
+            document.getElementById("thresholdLevel").value,
+          );
+          const removeAbove = document.getElementById(
+            "removeAboveThreshold",
+          ).checked;
+
+          updateStatus(
+            `Applying threshold filter with level ${level}, removing components ${removeAbove ? "above" : "below"} threshold...`,
+          );
+
+          audioProcessor.apply_threshold(level, removeAbove);
+
+          drawSpectrum();
+          updateStatus(`Threshold filter applied successfully`, false, true);
+        } catch (error) {
+          updateStatus(
+            `Error applying threshold filter: ${error.message}`,
+            true,
+          );
+          console.error("Error applying threshold filter:", error);
         }
-        
-        // Get processed audio data
-        const processedData = audioProcessor.get_processed_audio_normalized();
-        if (!processedData || processedData.length === 0) {
-          updateStatus('No processed audio data available', true);
-          return;
+      }
+
+      function applyAmplitudeDerivative() {
+        try {
+          if (!audioProcessor) {
+            updateStatus("No audio loaded", true);
+            return;
+          }
+
+          const multiplier = parseFloat(
+            document.getElementById("derivateMultiplier").value,
+          );
+
+          updateStatus(
+            `Applying amplitude derivative with multiplier ${multiplier}...`,
+          );
+
+          audioProcessor.apply_amplitude_derivative(multiplier);
+
+          drawSpectrum();
+          updateStatus(
+            `Amplitude derivative applied successfully`,
+            false,
+            true,
+          );
+        } catch (error) {
+          updateStatus(
+            `Error applying amplitude derivative: ${error.message}`,
+            true,
+          );
+          console.error("Error applying amplitude derivative:", error);
         }
-        
-        // Get audio info
-        const info = audioProcessor.get_info();
-        const numChannels = info.channels;
-        const sampleRate = info.sample_rate;
-        
-        updateStatus(`Creating audio buffer: ${numChannels} channels, ${processedData.length / numChannels} samples`);
-        
-        // Create a new AudioBuffer with the processed data
-        const newBuffer = audioContext.createBuffer(
-          numChannels,
-          processedData.length / numChannels,
-          sampleRate
-        );
-        
-        // Deinterleave the data back into the buffer
-        for (let channel = 0; channel < numChannels; channel++) {
-          const channelData = newBuffer.getChannelData(channel);
-          
-          for (let i = 0; i < channelData.length; i++) {
-            channelData[i] = processedData[i * numChannels + channel];
+      }
+
+      function applyKeepPeaks() {
+        try {
+          if (!audioProcessor) {
+            updateStatus("No audio loaded", true);
+            return;
+          }
+
+          updateStatus(`Applying keep peaks filter...`);
+
+          audioProcessor.keep_peaks();
+
+          drawSpectrum();
+          updateStatus(`Keep peaks filter applied successfully`, false, true);
+        } catch (error) {
+          updateStatus(
+            `Error applying keep peaks filter: ${error.message}`,
+            true,
+          );
+          console.error("Error applying keep peaks filter:", error);
+        }
+      }
+
+      function applyChordFilter() {
+        try {
+          if (!audioProcessor) {
+            updateStatus("No audio loaded", true);
+            return;
+          }
+
+          const freq1 = parseFloat(document.getElementById("chordFreq1").value);
+          const amp1 = parseFloat(document.getElementById("chordAmp1").value);
+
+          const freq2 = parseFloat(document.getElementById("chordFreq2").value);
+          const amp2 = parseFloat(document.getElementById("chordAmp2").value);
+
+          const freq3 = parseFloat(document.getElementById("chordFreq3").value);
+          const amp3 = parseFloat(document.getElementById("chordAmp3").value);
+
+          const freq4 = parseFloat(document.getElementById("chordFreq4").value);
+          const amp4 = parseFloat(document.getElementById("chordAmp4").value);
+
+          const freq5 = parseFloat(document.getElementById("chordFreq5").value);
+          const amp5 = parseFloat(document.getElementById("chordAmp5").value);
+
+          const width = parseFloat(document.getElementById("chordWidth").value);
+          const harmonics = parseFloat(
+            document.getElementById("chordHarmonics").value,
+          );
+
+          updateStatus(
+            `Applying chord filter with freqs: [${freq1}, ${freq2}, ${freq3}, ${freq4}, ${freq5}]...`,
+          );
+
+          audioProcessor.apply_chord_filter(
+            freq1,
+            amp1,
+            freq2,
+            amp2,
+            freq3,
+            amp3,
+            freq4,
+            amp4,
+            freq5,
+            amp5,
+            width,
+            harmonics,
+          );
+
+          drawSpectrum();
+          updateStatus("Chord filter applied successfully", false, true);
+        } catch (error) {
+          updateStatus(`Error applying chord filter: ${error.message}`, true);
+          console.error("Error applying chord filter:", error);
+        }
+      }
+
+      // Note frequency calculation
+      function getNoteFrequency(note, octave) {
+        // Base frequencies for notes in octave 4
+        const baseFrequencies = {
+          C: 261.63,
+          "C#": 277.18,
+          D: 293.66,
+          "D#": 311.13,
+          E: 329.63,
+          F: 349.23,
+          "F#": 369.99,
+          G: 392.0,
+          "G#": 415.3,
+          A: 440.0,
+          "A#": 466.16,
+          B: 493.88,
+        };
+
+        // Calculate frequency relative to A4 = 440Hz
+        // Each octave is a doubling of frequency
+        // Each semitone is 2^(1/12) = 1.059463 times the previous one
+        const semitoneOffset = {
+          C: -9,
+          "C#": -8,
+          D: -7,
+          "D#": -6,
+          E: -5,
+          F: -4,
+          "F#": -3,
+          G: -2,
+          "G#": -1,
+          A: 0,
+          "A#": 1,
+          B: 2,
+        };
+
+        // A4 is in octave 4, so adjust octave offset
+        const octaveOffset = octave - 4;
+
+        // Calculate frequency: A4 * 2^(octaveOffset) * 2^(semitoneOffset/12)
+        return baseFrequencies[note] * Math.pow(2, octaveOffset);
+      }
+
+      // Add note to chord
+      function addNoteToChord(note, octave) {
+        const freq = getNoteFrequency(note, octave);
+
+        // Find the first available frequency input that's empty or zero
+        for (let i = 1; i <= 5; i++) {
+          const freqInput = document.getElementById(`chordFreq${i}`);
+          const ampInput = document.getElementById(`chordAmp${i}`);
+
+          if (freqInput.value === "0" || freqInput.value === "") {
+            freqInput.value = freq.toFixed(2);
+            ampInput.value = "1.0"; // Default to full amplitude
+            return true;
           }
         }
-        
-        // Convert to WAV
-        updateStatus('Converting to WAV format...');
-        const wavData = audioBufferToWav(newBuffer);
-        
-        // Create a blob URL for the audio player
-        const blob = new Blob([wavData], { type: 'audio/wav' });
-        const url = URL.createObjectURL(blob);
-        
-        // Update the audio player
-        const audioPlayer = document.getElementById('audioPlayer');
-        audioPlayer.src = url;
-        
-        updateStatus('Audio player updated with processed audio', false, true);
-        return true;
-      } catch (error) {
-        updateStatus(`Error updating audio player: ${error.message}`, true);
-        console.error("Error updating audio player:", error);
+
+        // If all slots are filled, ask the user if they want to replace the last one
+        if (
+          confirm(
+            "All 5 frequency slots are filled. Do you want to replace the last one?",
+          )
+        ) {
+          document.getElementById("chordFreq5").value = freq.toFixed(2);
+          document.getElementById("chordAmp5").value = "1.0";
+          return true;
+        }
+
         return false;
       }
-    }
-    
-    function drawSpectrum() {
-      try {
-        if (!audioProcessor) {
-          return;
+
+      // Clear all chord frequencies
+      function clearChordFrequencies() {
+        for (let i = 1; i <= 5; i++) {
+          document.getElementById(`chordFreq${i}`).value = "0";
+          document.getElementById(`chordAmp${i}`).value = "0";
         }
-        
-        if (!canvasContext) {
-          return;
+      }
+
+      // Setup octave buttons
+      let currentOctave = 4; // Default octave
+      document.querySelectorAll(".octave-button").forEach((button) => {
+        button.addEventListener("click", function () {
+          // Remove active class from all octave buttons
+          document.querySelectorAll(".octave-button").forEach((btn) => {
+            btn.classList.remove("active");
+          });
+
+          // Add active class to the clicked button
+          this.classList.add("active");
+
+          // Update current octave
+          currentOctave = parseInt(this.getAttribute("data-octave"));
+        });
+      });
+
+      // Setup piano keys
+      document.querySelectorAll(".key").forEach((key) => {
+        if (!key.getAttribute("data-note")) return; // Skip the placeholder key
+
+        key.addEventListener("click", function () {
+          const note = this.getAttribute("data-note");
+          addNoteToChord(note, currentOctave);
+
+          // Visual feedback - briefly highlight the key
+          this.classList.add("key-pressed");
+          setTimeout(() => {
+            this.classList.remove("key-pressed");
+          }, 150);
+        });
+      });
+
+      // Setup chord presets
+      document.querySelectorAll(".preset-button").forEach((button) => {
+        button.addEventListener("click", function () {
+          const chordType = this.getAttribute("data-chord");
+          const rootNote = prompt("Enter root note (e.g., C, F#, Bb):", "C");
+
+          if (!rootNote) return;
+
+          // Normalize note input (handle flat notation)
+          const normalizedRoot = rootNote.replace("b", "#");
+
+          // Clear existing frequencies
+          clearChordFrequencies();
+
+          // Add chord notes based on the selected chord type
+          switch (chordType) {
+            case "major":
+              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 4),
+                currentOctave,
+              ); // Major third
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 7),
+                currentOctave,
+              ); // Perfect fifth
+              break;
+            case "minor":
+              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 3),
+                currentOctave,
+              ); // Minor third
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 7),
+                currentOctave,
+              ); // Perfect fifth
+              break;
+            case "aug":
+              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 4),
+                currentOctave,
+              ); // Major third
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 8),
+                currentOctave,
+              );
+              break;
+            case "dim":
+              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 3),
+                currentOctave,
+              ); // Minor third
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 6),
+                currentOctave,
+              );
+              break;
+            case "7th":
+              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 4),
+                currentOctave,
+              ); // Major third
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 7),
+                currentOctave,
+              ); // Perfect fifth
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 10),
+                currentOctave,
+              ); // Minor seventh
+              break;
+            case "maj7":
+              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 4),
+                currentOctave,
+              ); // Major third
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 7),
+                currentOctave,
+              ); // Perfect fifth
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 11),
+                currentOctave,
+              ); // Major seventh
+              break;
+            case "min7":
+              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 3),
+                currentOctave,
+              ); // Minor third
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 7),
+                currentOctave,
+              ); // Perfect fifth
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 10),
+                currentOctave,
+              ); // Minor seventh
+              break;
+            case "sus4":
+              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 5),
+                currentOctave,
+              ); // Perfect fourth
+              addNoteToChord(
+                getNoteFromSemitones(normalizedRoot, 7),
+                currentOctave,
+              ); // Perfect fifth
+              break;
+          }
+        });
+      });
+
+      // Helper function to get note from semitones above a root note
+      function getNoteFromSemitones(rootNote, semitones) {
+        const notes = [
+          "C",
+          "C#",
+          "D",
+          "D#",
+          "E",
+          "F",
+          "F#",
+          "G",
+          "G#",
+          "A",
+          "A#",
+          "B",
+        ];
+
+        // Find the index of the root note
+        let rootIndex = notes.indexOf(rootNote);
+        if (rootIndex === -1) {
+          // Handle flat notation (e.g., Bb -> A#)
+          if (rootNote.endsWith("b")) {
+            const flatToSharp = {
+              Db: "C#",
+              Eb: "D#",
+              Gb: "F#",
+              Ab: "G#",
+              Bb: "A#",
+            };
+            rootNote = flatToSharp[rootNote] || "C"; // Default to C if not found
+            rootIndex = notes.indexOf(rootNote);
+          } else {
+            rootIndex = 0; // Default to C if note not found
+          }
         }
-        
+
+        // Calculate the new note index (wrap around to stay within 0-11)
+        const newIndex = (rootIndex + semitones) % 12;
+
+        return notes[newIndex];
+      }
+
+      // Function to handle frequency spectrum splitting
+      async function applySplit() {
+        try {
+          if (!audioProcessor) {
+            updateStatus("No audio loaded", true);
+            return;
+          }
+
+          const baseName =
+            document.getElementById("splitBaseName").value || "split";
+          const numParts = parseInt(
+            document.getElementById("splitNumParts").value,
+          );
+          const groupSize = parseInt(
+            document.getElementById("splitGroupSize").value,
+          );
+
+          if (numParts < 2) {
+            updateStatus("Number of parts must be at least 2", true);
+            return;
+          }
+
+          if (groupSize < 1) {
+            updateStatus("Group size must be at least 1", true);
+            return;
+          }
+
+          updateStatus(
+            `Preparing to split audio into ${numParts} parts with group size ${groupSize}...`,
+          );
+
+          // Process each part sequentially
+          for (let i = 0; i < numParts; i++) {
+            // Prepare this part
+            updateStatus(`Preparing part ${i + 1}/${numParts}...`);
+            try {
+              audioProcessor.prepare_split_part(i, numParts, groupSize);
+            } catch (prepareError) {
+              updateStatus(
+                `Error preparing part ${i + 1}: ${prepareError}`,
+                true,
+              );
+              console.error(`Error preparing part ${i + 1}:`, prepareError);
+              continue;
+            }
+
+            // Process the audio (apply IFFT)
+            updateStatus(`Performing inverse FFT for part ${i + 1}...`);
+            try {
+              audioProcessor.perform_ifft();
+            } catch (ifftError) {
+              updateStatus(
+                `Error performing inverse FFT for part ${i + 1}: ${ifftError}`,
+                true,
+              );
+              console.error(
+                `Error performing inverse FFT for part ${i + 1}:`,
+                ifftError,
+              );
+              continue;
+            }
+
+            // Generate WAV data and download
+            const filename = `${baseName}_${i}.wav`;
+            updateStatus(`Downloading part ${i + 1} as ${filename}...`);
+
+            //await ! does not work to run this async as we will need to complete each file before next since we are reusing the buffer
+            downloadProcessedPart(filename);
+
+            // Reset the split (not the full processor) to prepare for the next part
+            try {
+              audioProcessor.reset_split();
+            } catch (resetError) {
+              updateStatus(`Error resetting split: ${resetError}`, true);
+              console.error(`Error resetting split:`, resetError);
+              break;
+            }
+          }
+
+          updateStatus(
+            "Frequency spectrum split completed successfully",
+            false,
+            true,
+          );
+        } catch (error) {
+          updateStatus(
+            `Error splitting frequency spectrum: ${error.message}`,
+            true,
+          );
+          console.error("Error splitting frequency spectrum:", error);
+        }
+      }
+
+      // Helper function to download a processed part
+      async function downloadProcessedPart(filename) {
+        try {
+          // Convert to 32-bit float WAV and get bytes
+          const wavData = audioProcessor.save_to_wav_bytes();
+
+          // Create and trigger download
+          const blob = new Blob([wavData], { type: "audio/wav" });
+          const url = URL.createObjectURL(blob);
+
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = filename;
+
+          // Notify user that the download is about to start
+          updateStatus(`Downloading ${filename}...`, false, false);
+
+          // Small delay to allow status message to show
+          await new Promise((resolve) => setTimeout(resolve, 200));
+
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          // Clean up
+          setTimeout(() => URL.revokeObjectURL(url), 100);
+
+          return true;
+        } catch (error) {
+          updateStatus(`Error downloading part: ${error.message}`, true);
+          console.error("Error downloading part:", error);
+          return false;
+        }
+      }
+
+      async function processAudio() {
+        try {
+          if (!audioProcessor) {
+            updateStatus("No audio loaded", true);
+            return;
+          }
+
+          updateStatus("Processing audio...");
+
+          // Manually trigger IFFT in the processor
+          try {
+            // First ask the processor to perform the IFFT
+            updateStatus("Performing inverse FFT...");
+            audioProcessor.perform_ifft();
+            updateStatus("IFFT completed successfully");
+          } catch (ifftError) {
+            updateStatus(
+              `IFFT error: ${ifftError}. The audio might be corrupted.`,
+              true,
+            );
+            console.error("IFFT error:", ifftError);
+
+            // Try to reset the audio
+            try {
+              updateStatus("Attempting to reset the audio data...");
+              audioProcessor.reset();
+              updateStatus(
+                "Audio data reset. Please try a different operation.",
+                false,
+                true,
+              );
+              drawSpectrum();
+              return;
+            } catch (resetError) {
+              updateStatus(`Failed to reset audio: ${resetError}`, true);
+              console.error("Reset error:", resetError);
+              return;
+            }
+          }
+
+          // Update the audio player with the processed audio
+          updateStatus("Updating audio player...");
+          if (await updateAudioPlayer()) {
+            updateStatus(
+              "Audio processed and player updated successfully",
+              false,
+              true,
+            );
+          }
+        } catch (error) {
+          updateStatus(`Error processing audio: ${error.message}`, true);
+          console.error("Error processing audio:", error);
+        }
+      }
+
+      function downloadAudio() {
+        try {
+          if (!audioProcessor || !audioContext) {
+            updateStatus("No audio loaded", true);
+            return;
+          }
+
+          updateStatus("Preparing audio for download...");
+
+          // Convert to 32-bit float WAV adn get bytes
+          const wavData = audioProcessor.save_to_wav_bytes();
+
+          // Create a download link
+          const blob = new Blob([wavData], { type: "audio/wav" });
+          const url = URL.createObjectURL(blob);
+
+          // Generate a good filename
+          let outputFilename = "processed_audio.wav";
+          if (selectedFileName) {
+            // Extract the name without extension and add "processed"
+            const baseName = selectedFileName.replace(/\.[^/.]+$/, "");
+            outputFilename = `${baseName}_processed.wav`;
+          }
+
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = outputFilename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          updateStatus(
+            `Processed audio downloaded as ${outputFilename}`,
+            false,
+            true,
+          );
+        } catch (error) {
+          updateStatus(`Error downloading audio: ${error.message}`, true);
+          console.error("Error downloading audio:", error);
+        }
+      }
+
+      async function updateAudioPlayer() {
+        try {
+          if (!audioProcessor || !audioContext) {
+            updateStatus("Audio processor or context not initialized", true);
+            return;
+          }
+
+          // Stop any playing audio
+          if (audioSource) {
+            audioSource.stop();
+            audioSource = null;
+          }
+
+          // Get processed audio data
+          const processedData = audioProcessor.get_processed_audio_normalized();
+          if (!processedData || processedData.length === 0) {
+            updateStatus("No processed audio data available", true);
+            return;
+          }
+
+          // Get audio info
+          const info = audioProcessor.get_info();
+          const numChannels = info.channels;
+          const sampleRate = info.sample_rate;
+
+          updateStatus(
+            `Creating audio buffer: ${numChannels} channels, ${processedData.length / numChannels} samples`,
+          );
+
+          // Create a new AudioBuffer with the processed data
+          const newBuffer = audioContext.createBuffer(
+            numChannels,
+            processedData.length / numChannels,
+            sampleRate,
+          );
+
+          // Deinterleave the data back into the buffer
+          for (let channel = 0; channel < numChannels; channel++) {
+            const channelData = newBuffer.getChannelData(channel);
+
+            for (let i = 0; i < channelData.length; i++) {
+              channelData[i] = processedData[i * numChannels + channel];
+            }
+          }
+
+          // Convert to WAV
+          updateStatus("Converting to WAV format...");
+          const wavData = audioBufferToWav(newBuffer);
+
+          // Create a blob URL for the audio player
+          const blob = new Blob([wavData], { type: "audio/wav" });
+          const url = URL.createObjectURL(blob);
+
+          // Update the audio player
+          const audioPlayer = document.getElementById("audioPlayer");
+          audioPlayer.src = url;
+
+          updateStatus(
+            "Audio player updated with processed audio",
+            false,
+            true,
+          );
+          return true;
+        } catch (error) {
+          updateStatus(`Error updating audio player: ${error.message}`, true);
+          console.error("Error updating audio player:", error);
+          return false;
+        }
+      }
+
+      function drawSpectrum() {
+        try {
+          if (!audioProcessor) {
+            return;
+          }
+
+          if (!canvasContext) {
+            return;
+          }
+
+          const canvas = canvasContext.canvas;
+          const width = canvas.width;
+          const height = canvas.height;
+
+          // Clear the canvas
+          canvasContext.fillStyle = "#2a2a2a"; // Dark background for the canvas
+          canvasContext.fillRect(0, 0, width, height);
+
+          try {
+            // Get spectrum data for the first channel
+            const spectrumData = audioProcessor.get_spectrum_data(0);
+
+            if (!spectrumData || spectrumData.length === 0) {
+              canvasContext.fillStyle = "#aaaaaa";
+              canvasContext.font = "16px Arial";
+              canvasContext.textAlign = "center";
+              canvasContext.fillText(
+                "No spectrum data available",
+                width / 2,
+                height / 2,
+              );
+              return;
+            }
+
+            // Draw grid lines for better readability
+            canvasContext.strokeStyle = "rgba(100, 100, 100, 0.2)";
+            canvasContext.lineWidth = 1;
+
+            // Horizontal grid lines
+            for (let i = 0; i < 10; i++) {
+              const y = i * (height / 10);
+              canvasContext.beginPath();
+              canvasContext.moveTo(0, y);
+              canvasContext.lineTo(width, y);
+              canvasContext.stroke();
+            }
+
+            // Vertical grid lines
+            for (let i = 0; i < 10; i++) {
+              const x = i * (width / 10);
+              canvasContext.beginPath();
+              canvasContext.moveTo(x, 0);
+              canvasContext.lineTo(x, height);
+              canvasContext.stroke();
+            }
+
+            // Create gradient for the spectrum visualization
+            const gradient = canvasContext.createLinearGradient(
+              0,
+              height,
+              0,
+              0,
+            );
+            gradient.addColorStop(0, "rgba(37, 134, 255, 0.7)"); // Bottom color (lower amplitude)
+            gradient.addColorStop(0.5, "rgba(92, 195, 255, 0.8)"); // Middle color
+            gradient.addColorStop(1, "rgba(255, 255, 255, 0.9)"); // Top color (higher amplitude)
+
+            // Draw the spectrum
+            canvasContext.beginPath();
+            canvasContext.moveTo(0, height);
+
+            const barWidth = width / spectrumData.length;
+
+            for (let i = 0; i < spectrumData.length; i++) {
+              const x = i * barWidth;
+              const y = height - spectrumData[i] * height;
+
+              canvasContext.lineTo(x, y);
+            }
+
+            canvasContext.lineTo(width, height);
+            canvasContext.closePath();
+
+            canvasContext.fillStyle = gradient;
+            canvasContext.fill();
+
+            canvasContext.strokeStyle = "rgba(255, 255, 255, 0.8)";
+            canvasContext.lineWidth = 2;
+            canvasContext.stroke();
+
+            // Add frequency labels
+            canvasContext.fillStyle = "#aaaaaa";
+            canvasContext.font = "12px Arial";
+            canvasContext.textAlign = "center";
+
+            // Get audio info to calculate frequencies
+            const info = audioProcessor.get_info();
+            if (info && info.sample_rate) {
+              const nyquistFreq = info.sample_rate / 2;
+              const numLabels = 5;
+
+              for (let i = 0; i <= numLabels; i++) {
+                const x = (i / numLabels) * width;
+                const freq = (i / numLabels) * nyquistFreq;
+                let freqLabel = freq.toFixed(0) + " Hz";
+
+                // Convert to kHz for higher frequencies
+                if (freq >= 1000) {
+                  freqLabel = (freq / 1000).toFixed(1) + " kHz";
+                }
+
+                canvasContext.fillText(freqLabel, x, height - 5);
+              }
+            }
+          } catch (spectrumError) {
+            console.error("Error getting spectrum data:", spectrumError);
+            canvasContext.fillStyle = "#aaaaaa";
+            canvasContext.font = "16px Arial";
+            canvasContext.textAlign = "center";
+            canvasContext.fillText(
+              "Error getting spectrum data",
+              width / 2,
+              height / 2,
+            );
+          }
+        } catch (error) {
+          console.error("Error drawing spectrum:", error);
+          updateStatus(`Error drawing spectrum: ${error.message}`, true);
+        }
+      }
+
+      function drawEmptySpectrum() {
+        if (!canvasContext) return;
+
         const canvas = canvasContext.canvas;
         const width = canvas.width;
         const height = canvas.height;
-        
+
         // Clear the canvas
-        canvasContext.fillStyle = '#2a2a2a'; // Dark background for the canvas
+        canvasContext.fillStyle = "#2a2a2a"; // Dark background for the canvas
         canvasContext.fillRect(0, 0, width, height);
-        
-        try {
-          // Get spectrum data for the first channel
-          const spectrumData = audioProcessor.get_spectrum_data(0);
-          
-          if (!spectrumData || spectrumData.length === 0) {
-            canvasContext.fillStyle = '#aaaaaa';
-            canvasContext.font = '16px Arial';
-            canvasContext.textAlign = 'center';
-            canvasContext.fillText('No spectrum data available', width / 2, height / 2);
-            return;
-          }
-          
-          // Draw grid lines for better readability
-          canvasContext.strokeStyle = 'rgba(100, 100, 100, 0.2)';
-          canvasContext.lineWidth = 1;
-          
-          // Horizontal grid lines
-          for (let i = 0; i < 10; i++) {
-            const y = i * (height / 10);
-            canvasContext.beginPath();
-            canvasContext.moveTo(0, y);
-            canvasContext.lineTo(width, y);
-            canvasContext.stroke();
-          }
-          
-          // Vertical grid lines
-          for (let i = 0; i < 10; i++) {
-            const x = i * (width / 10);
-            canvasContext.beginPath();
-            canvasContext.moveTo(x, 0);
-            canvasContext.lineTo(x, height);
-            canvasContext.stroke();
-          }
-          
-          // Create gradient for the spectrum visualization
-          const gradient = canvasContext.createLinearGradient(0, height, 0, 0);
-          gradient.addColorStop(0, 'rgba(37, 134, 255, 0.7)');   // Bottom color (lower amplitude)
-          gradient.addColorStop(0.5, 'rgba(92, 195, 255, 0.8)'); // Middle color
-          gradient.addColorStop(1, 'rgba(255, 255, 255, 0.9)');  // Top color (higher amplitude)
-          
-          // Draw the spectrum
+
+        // Draw grid lines for better readability
+        canvasContext.strokeStyle = "rgba(100, 100, 100, 0.2)";
+        canvasContext.lineWidth = 1;
+
+        // Horizontal grid lines
+        for (let i = 0; i < 10; i++) {
+          const y = i * (height / 10);
           canvasContext.beginPath();
-          canvasContext.moveTo(0, height);
-          
-          const barWidth = width / spectrumData.length;
-          
-          for (let i = 0; i < spectrumData.length; i++) {
-            const x = i * barWidth;
-            const y = height - (spectrumData[i] * height);
-            
-            canvasContext.lineTo(x, y);
-          }
-          
-          canvasContext.lineTo(width, height);
-          canvasContext.closePath();
-          
-          canvasContext.fillStyle = gradient;
-          canvasContext.fill();
-          
-          canvasContext.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-          canvasContext.lineWidth = 2;
+          canvasContext.moveTo(0, y);
+          canvasContext.lineTo(width, y);
           canvasContext.stroke();
-          
-          // Add frequency labels
-          canvasContext.fillStyle = '#aaaaaa';
-          canvasContext.font = '12px Arial';
-          canvasContext.textAlign = 'center';
-          
-          // Get audio info to calculate frequencies
-          const info = audioProcessor.get_info();
-          if (info && info.sample_rate) {
-            const nyquistFreq = info.sample_rate / 2;
-            const numLabels = 5;
-            
-            for (let i = 0; i <= numLabels; i++) {
-              const x = (i / numLabels) * width;
-              const freq = (i / numLabels) * nyquistFreq;
-              let freqLabel = freq.toFixed(0) + ' Hz';
-              
-              // Convert to kHz for higher frequencies
-              if (freq >= 1000) {
-                freqLabel = (freq / 1000).toFixed(1) + ' kHz';
-              }
-              
-              canvasContext.fillText(freqLabel, x, height - 5);
-            }
+        }
+
+        // Vertical grid lines
+        for (let i = 0; i < 10; i++) {
+          const x = i * (width / 10);
+          canvasContext.beginPath();
+          canvasContext.moveTo(x, 0);
+          canvasContext.lineTo(x, height);
+          canvasContext.stroke();
+        }
+
+        // Add text prompt
+        canvasContext.fillStyle = "#aaaaaa";
+        canvasContext.font = "16px Arial";
+        canvasContext.textAlign = "center";
+        canvasContext.fillText(
+          "Load an audio file to see the spectrum",
+          width / 2,
+          height / 2,
+        );
+
+        // Add frequency labels
+        canvasContext.font = "12px Arial";
+
+        for (let i = 0; i <= 5; i++) {
+          const x = (i / 5) * width;
+          const freq = (i / 5) * 22050; // Assume 44.1 kHz sample rate
+          let freqLabel = freq.toFixed(0) + " Hz";
+
+          // Convert to kHz for higher frequencies
+          if (freq >= 1000) {
+            freqLabel = (freq / 1000).toFixed(1) + " kHz";
           }
-          
-        } catch (spectrumError) {
-          console.error("Error getting spectrum data:", spectrumError);
-          canvasContext.fillStyle = '#aaaaaa';
-          canvasContext.font = '16px Arial';
-          canvasContext.textAlign = 'center';
-          canvasContext.fillText('Error getting spectrum data', width / 2, height / 2);
-        }
-      } catch (error) {
-        console.error("Error drawing spectrum:", error);
-        updateStatus(`Error drawing spectrum: ${error.message}`, true);
-      }
-    }
-    
-    function drawEmptySpectrum() {
-      if (!canvasContext) return;
-      
-      const canvas = canvasContext.canvas;
-      const width = canvas.width;
-      const height = canvas.height;
-      
-      // Clear the canvas
-      canvasContext.fillStyle = '#2a2a2a'; // Dark background for the canvas
-      canvasContext.fillRect(0, 0, width, height);
-      
-      // Draw grid lines for better readability
-      canvasContext.strokeStyle = 'rgba(100, 100, 100, 0.2)';
-      canvasContext.lineWidth = 1;
-      
-      // Horizontal grid lines
-      for (let i = 0; i < 10; i++) {
-        const y = i * (height / 10);
-        canvasContext.beginPath();
-        canvasContext.moveTo(0, y);
-        canvasContext.lineTo(width, y);
-        canvasContext.stroke();
-      }
-      
-      // Vertical grid lines
-      for (let i = 0; i < 10; i++) {
-        const x = i * (width / 10);
-        canvasContext.beginPath();
-        canvasContext.moveTo(x, 0);
-        canvasContext.lineTo(x, height);
-        canvasContext.stroke();
-      }
-      
-      // Add text prompt
-      canvasContext.fillStyle = '#aaaaaa';
-      canvasContext.font = '16px Arial';
-      canvasContext.textAlign = 'center';
-      canvasContext.fillText('Load an audio file to see the spectrum', width / 2, height / 2);
-      
-      // Add frequency labels
-      canvasContext.font = '12px Arial';
-      
-      for (let i = 0; i <= 5; i++) {
-        const x = (i / 5) * width;
-        const freq = (i / 5) * 22050; // Assume 44.1 kHz sample rate
-        let freqLabel = freq.toFixed(0) + ' Hz';
-        
-        // Convert to kHz for higher frequencies
-        if (freq >= 1000) {
-          freqLabel = (freq / 1000).toFixed(1) + ' kHz';
-        }
-        
-        canvasContext.fillText(freqLabel, x, height - 5);
-      }
-    }
-    
-    // Helper function to convert AudioBuffer to WAV
-    function audioBufferToWav(buffer) {
-      const numChannels = buffer.numberOfChannels;
-      const length = buffer.length * numChannels * 2; // 16-bit samples
-      const sampleRate = buffer.sampleRate;
-      
-      const wav = new DataView(new ArrayBuffer(44 + length));
-      
-      // Write RIFF header
-      writeString(wav, 0, 'RIFF');
-      wav.setUint32(4, 36 + length, true);
-      writeString(wav, 8, 'WAVE');
-      
-      // Write fmt chunk
-      writeString(wav, 12, 'fmt ');
-      wav.setUint32(16, 16, true); // Chunk length
-      wav.setUint16(20, 1, true); // PCM format
-      wav.setUint16(22, numChannels, true);
-      wav.setUint32(24, sampleRate, true);
-      wav.setUint32(28, sampleRate * numChannels * 2, true); // Byte rate
-      wav.setUint16(32, numChannels * 2, true); // Block align
-      wav.setUint16(34, 16, true); // Bits per sample
-      
-      // Write data chunk
-      writeString(wav, 36, 'data');
-      wav.setUint32(40, length, true);
-      
-      // Write interleaved audio data
-      let offset = 44;
-      
-      for (let i = 0; i < buffer.length; i++) {
-        for (let channel = 0; channel < numChannels; channel++) {
-          const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[i]));
-          const int16 = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
-          wav.setInt16(offset, int16, true);
-          offset += 2;
+
+          canvasContext.fillText(freqLabel, x, height - 5);
         }
       }
-      
-      return wav.buffer;
-    }
-    
-    function writeString(view, offset, string) {
-      for (let i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
+
+      // Helper function to convert AudioBuffer to WAV
+      function audioBufferToWav(buffer) {
+        const numChannels = buffer.numberOfChannels;
+        const length = buffer.length * numChannels * 2; // 16-bit samples
+        const sampleRate = buffer.sampleRate;
+
+        const wav = new DataView(new ArrayBuffer(44 + length));
+
+        // Write RIFF header
+        writeString(wav, 0, "RIFF");
+        wav.setUint32(4, 36 + length, true);
+        writeString(wav, 8, "WAVE");
+
+        // Write fmt chunk
+        writeString(wav, 12, "fmt ");
+        wav.setUint32(16, 16, true); // Chunk length
+        wav.setUint16(20, 1, true); // PCM format
+        wav.setUint16(22, numChannels, true);
+        wav.setUint32(24, sampleRate, true);
+        wav.setUint32(28, sampleRate * numChannels * 2, true); // Byte rate
+        wav.setUint16(32, numChannels * 2, true); // Block align
+        wav.setUint16(34, 16, true); // Bits per sample
+
+        // Write data chunk
+        writeString(wav, 36, "data");
+        wav.setUint32(40, length, true);
+
+        // Write interleaved audio data
+        let offset = 44;
+
+        for (let i = 0; i < buffer.length; i++) {
+          for (let channel = 0; channel < numChannels; channel++) {
+            const sample = Math.max(
+              -1,
+              Math.min(1, buffer.getChannelData(channel)[i]),
+            );
+            const int16 = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+            wav.setInt16(offset, int16, true);
+            offset += 2;
+          }
+        }
+
+        return wav.buffer;
       }
-    }
-    
-    // Initialize when the page loads
-    window.addEventListener('load', initialize);
-  </script>
-</body>
+
+      function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
+
+      // Initialize when the page loads
+      window.addEventListener("load", initialize);
+    </script>
+  </body>
 </html>

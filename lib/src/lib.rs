@@ -7,6 +7,7 @@
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
 
+pub mod audio_read_write;
 mod processor;
 pub mod utils;
 

@@ -1,5 +1,5 @@
 use crate::{AudioProcessor, Result};
-use hound::{SampleFormat, WavReader, WavSpec, WavWriter};
+use hound::{SampleFormat, WavSpec, WavWriter};
 use std::cell::RefCell;
 use std::io::{Cursor, Seek, Write};
 use std::rc::Rc;
@@ -75,112 +75,18 @@ impl<W: Seek> Seek for SharedWriter<W> {
 /// and setting up the AudioProcessor with the extracted data.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn load_from_wav(processor: &mut AudioProcessor, filename: &str) -> Result<()> {
-    let reader = WavReader::open(filename).map_err(|e| format!("Error opening file: {}", e))?;
+    use crate::audio_read_write::read_audio_file;
 
-    let spec = reader.spec();
-    let sample_rate = spec.sample_rate;
-    let channels = spec.channels;
-
-    // Read all samples and convert to f64
-    // For multi-channel audio, we'll group samples by channel
-    let mut time_data_by_channel: Vec<Vec<f64>> = vec![Vec::new(); spec.channels as usize];
-
-    match spec.sample_format {
-        SampleFormat::Int => {
-            match spec.bits_per_sample {
-                16 => {
-                    let samples: Vec<i16> = reader
-                        .into_samples()
-                        .collect::<std::result::Result<Vec<i16>, _>>()
-                        .map_err(|e| format!("Error reading samples: {}", e))?;
-
-                    // Distribute samples across channels
-                    for (i, &sample) in samples.iter().enumerate() {
-                        let channel = i % spec.channels as usize;
-                        // Convert i16 samples to f64, normalizing to [-1.0, 1.0]
-                        time_data_by_channel[channel].push(f64::from(sample) / 32768.0);
-                    }
-                }
-                24 => {
-                    let samples: Vec<i32> = reader
-                        .into_samples()
-                        .collect::<std::result::Result<Vec<i32>, _>>()
-                        .map_err(|e| format!("Error reading samples: {}", e))?;
-
-                    // Distribute samples across channels
-                    for (i, &sample) in samples.iter().enumerate() {
-                        let channel = i % spec.channels as usize;
-                        // Convert i24 samples to f64, normalizing to [-1.0, 1.0]
-                        time_data_by_channel[channel].push(f64::from(sample) / 8388608.0);
-                    }
-                }
-                32 => {
-                    let samples: Vec<i32> = reader
-                        .into_samples()
-                        .collect::<std::result::Result<Vec<i32>, _>>()
-                        .map_err(|e| format!("Error reading samples: {}", e))?;
-
-                    // Distribute samples across channels
-                    for (i, &sample) in samples.iter().enumerate() {
-                        let channel = i % spec.channels as usize;
-                        // Convert i32 samples to f64, normalizing to [-1.0, 1.0]
-                        time_data_by_channel[channel].push(f64::from(sample) / 2147483648.0);
-                    }
-                }
-                _ => {
-                    return Err(format!(
-                        "Unsupported bits per sample: {}",
-                        spec.bits_per_sample
-                    ))
-                }
-            }
+    match read_audio_file(filename) {
+        Ok((sample_rate, data)) => {
+            // Set the audio data in the processor
+            processor.set_audio_data(sample_rate, data.len().try_into().unwrap(), data)?;
+            // Perform FFT on the loaded data
+            processor.perform_fft()?;
+            Ok(())
         }
-        SampleFormat::Float => {
-            match spec.bits_per_sample {
-                32 => {
-                    let samples: Vec<f32> = reader
-                        .into_samples()
-                        .collect::<std::result::Result<Vec<f32>, _>>()
-                        .map_err(|e| format!("Error reading samples: {}", e))?;
-
-                    // Distribute samples across channels
-                    for (i, &sample) in samples.iter().enumerate() {
-                        let channel = i % spec.channels as usize;
-                        // Convert f32 samples to f64
-                        time_data_by_channel[channel].push(f64::from(sample));
-                    }
-                }
-                64 => {
-                    // f64 is not directly supported by hound as a sample type
-                    // Read as f32 and convert to f64
-                    let samples: Vec<f32> = reader
-                        .into_samples()
-                        .collect::<std::result::Result<Vec<f32>, _>>()
-                        .map_err(|e| format!("Error reading samples: {}", e))?;
-
-                    // Distribute samples across channels
-                    for (i, &sample) in samples.iter().enumerate() {
-                        let channel = i % spec.channels as usize;
-                        time_data_by_channel[channel].push(f64::from(sample));
-                    }
-                }
-                _ => {
-                    return Err(format!(
-                        "Unsupported bits per sample: {}",
-                        spec.bits_per_sample
-                    ))
-                }
-            }
-        }
-    };
-
-    // Set the audio data in the processor
-    processor.set_audio_data(sample_rate, channels, time_data_by_channel)?;
-
-    // Perform FFT on the loaded data
-    processor.perform_fft()?;
-
-    Ok(())
+        Err(error) => Err(format!("Error: {}", error.to_string())),
+    }
 }
 
 /// Save audio data from an AudioProcessor to a Writer provided

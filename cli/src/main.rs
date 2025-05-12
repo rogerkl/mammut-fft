@@ -20,6 +20,7 @@ fn print_help() {
     );
     println!("  highpass <cutoff_hz>           - Apply a highpass filter at the specified cutoff frequency");
     println!("  bandpass <low_hz> <high_hz>    - Apply a bandpass filter between the specified frequencies");
+    println!("  chord <freq1> <amp1> <freq2> <amp2> <freq3> <amp3> <freq4> <amp4> <freq5> <amp5> <width> <harmonics> - Apply a chord filter to isolate specific frequencies and harmonics");
     //println!("  phase <shift_radians>          - Apply a phase shift to all frequencies");
     println!("  phasemul <factor>              - Multiply all phases by a factor (creates interesting effects)");
     println!("  swapbins <block_size> <repeat> - Randomly swap frequency bins");
@@ -202,6 +203,177 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
 
             match processor.apply_bandpass(low_hz, high_hz) {
                 Ok(_) => println!("Bandpass filter applied successfully"),
+                Err(e) => println!("Error: {}", e),
+            }
+        }
+        "chord" => {
+            if parts.len() != 13 {
+                println!("Usage: chord <freq1> <amp1> <freq2> <amp2> <freq3> <amp3> <freq4> <amp4> <freq5> <amp5> <width> <harmonics>");
+                println!("  freq1-5: Frequencies to keep (Hz, 0 to skip)");
+                println!("  amp1-5: Relative amplitude for each frequency (0-1, 0 to skip)");
+                println!("  width: Width around each frequency to keep (0-50 cents)");
+                println!("  harmonics: Harmonic strength factor (0-1)");
+                println!("    0: Only fundamental frequencies");
+                println!("    1: Harmonics follow sawtooth wave amplitude decay (1/n)");
+                return;
+            }
+
+            // Parse the frequency parameters
+            let freq1 = match parts[1].parse::<f64>() {
+                Ok(value) => value,
+                Err(_) => {
+                    println!("Error: frequency 1 must be a valid number");
+                    return;
+                }
+            };
+
+            let amp1 = match parts[2].parse::<f64>() {
+                Ok(value) => {
+                    if value < 0.0 || value > 1.0 {
+                        println!("Error: amplitude 1 must be between 0 and 1");
+                        return;
+                    }
+                    value
+                }
+                Err(_) => {
+                    println!("Error: amplitude 1 must be a valid number");
+                    return;
+                }
+            };
+
+            let freq2 = match parts[3].parse::<f64>() {
+                Ok(value) => value,
+                Err(_) => {
+                    println!("Error: frequency 2 must be a valid number");
+                    return;
+                }
+            };
+
+            let amp2 = match parts[4].parse::<f64>() {
+                Ok(value) => {
+                    if value < 0.0 || value > 1.0 {
+                        println!("Error: amplitude 2 must be between 0 and 1");
+                        return;
+                    }
+                    value
+                }
+                Err(_) => {
+                    println!("Error: amplitude 2 must be a valid number");
+                    return;
+                }
+            };
+
+            let freq3 = match parts[5].parse::<f64>() {
+                Ok(value) => value,
+                Err(_) => {
+                    println!("Error: frequency 3 must be a valid number");
+                    return;
+                }
+            };
+
+            let amp3 = match parts[6].parse::<f64>() {
+                Ok(value) => {
+                    if value < 0.0 || value > 1.0 {
+                        println!("Error: amplitude 3 must be between 0 and 1");
+                        return;
+                    }
+                    value
+                }
+                Err(_) => {
+                    println!("Error: amplitude 3 must be a valid number");
+                    return;
+                }
+            };
+
+            let freq4 = match parts[7].parse::<f64>() {
+                Ok(value) => value,
+                Err(_) => {
+                    println!("Error: frequency 4 must be a valid number");
+                    return;
+                }
+            };
+
+            let amp4 = match parts[8].parse::<f64>() {
+                Ok(value) => {
+                    if value < 0.0 || value > 1.0 {
+                        println!("Error: amplitude 4 must be between 0 and 1");
+                        return;
+                    }
+                    value
+                }
+                Err(_) => {
+                    println!("Error: amplitude 4 must be a valid number");
+                    return;
+                }
+            };
+
+            let freq5 = match parts[9].parse::<f64>() {
+                Ok(value) => value,
+                Err(_) => {
+                    println!("Error: frequency 5 must be a valid number");
+                    return;
+                }
+            };
+
+            let amp5 = match parts[10].parse::<f64>() {
+                Ok(value) => {
+                    if value < 0.0 || value > 1.0 {
+                        println!("Error: amplitude 5 must be between 0 and 1");
+                        return;
+                    }
+                    value
+                }
+                Err(_) => {
+                    println!("Error: amplitude 5 must be a valid number");
+                    return;
+                }
+            };
+
+            let width = match parts[11].parse::<f64>() {
+                Ok(value) => {
+                    if value < 0.0 || value > 50.0 {
+                        println!("Error: width must be between 0 and 50 cents");
+                        return;
+                    }
+                    value
+                }
+                Err(_) => {
+                    println!("Error: width must be a valid number");
+                    return;
+                }
+            };
+
+            let harmonics = match parts[12].parse::<f64>() {
+                Ok(value) => {
+                    if value < 0.0 || value > 1.0 {
+                        println!("Error: harmonics must be between 0 and 1");
+                        return;
+                    }
+                    value
+                }
+                Err(_) => {
+                    println!("Error: harmonics must be a valid number");
+                    return;
+                }
+            };
+
+            println!(
+                "Applying chord filter with frequencies: [{}, {}, {}, {}, {}]",
+                freq1, freq2, freq3, freq4, freq5
+            );
+            println!(
+                "Amplitudes: [{}, {}, {}, {}, {}]",
+                amp1, amp2, amp3, amp4, amp5
+            );
+            println!("Width: {} cents, Harmonics strength: {}", width, harmonics);
+
+            match processor.apply_chord_filter(
+                [freq1, freq2, freq3, freq4, freq5],
+                [amp1, amp2, amp3, amp4, amp5],
+                width,
+                harmonics,
+            ) {
+                Ok(_) => println!("Chord filter applied successfully"),
                 Err(e) => println!("Error: {}", e),
             }
         }
