@@ -97,7 +97,7 @@
               Process Audio
             </button>
           </div>
-          <audio id="audioPlayer" controls loop></audio>
+          <audio id="audioPlayer" controls></audio>
           <div class="essential-buttons">
             <button id="resetButton">Reset to Original</button>
             <button id="downloadButton">Download Processed Audio</button>
@@ -1708,8 +1708,7 @@ Do not try to understand what happens - even the programmer can't explain it in 
       function addNoteToChord(rootNote, note, octave) {
         const rootfreq = getNoteFrequency(rootNote, octave);
         var freq = getNoteFrequency(note, octave);
-        if (freq < rootfreq) 
-          freq = getNoteFrequency(note, octave + 1);
+        if (freq < rootfreq) freq = getNoteFrequency(note, octave + 1);
 
         // Find the first available frequency input that's empty or zero
         for (let i = 1; i <= 5; i++) {
@@ -2272,8 +2271,16 @@ Do not try to understand what happens - even the programmer can't explain it in 
           canvasContext.fillRect(0, 0, width, height);
 
           try {
-            // Get spectrum data for the first channel
-            const spectrumData = audioProcessor.get_spectrum_data(0);
+            // Calculate maximum points based on canvas width (1 point per pixel is sufficient)
+            const maxPoints = width;
+
+            // Get spectrum data for the first channel with logarithmic scaling
+            // The third parameter (true) enables logarithmic frequency scaling
+            const spectrumData = audioProcessor.get_spectrum_data(
+              0,
+              maxPoints,
+              true,
+            );
 
             if (!spectrumData || spectrumData.length === 0) {
               canvasContext.fillStyle = "#aaaaaa";
@@ -2288,26 +2295,16 @@ Do not try to understand what happens - even the programmer can't explain it in 
             }
 
             // Draw grid lines for better readability
-            canvasContext.strokeStyle = "rgba(100, 100, 100, 0.2)";
-            canvasContext.lineWidth = 1;
+            drawGrid(width, height);
 
-            // Horizontal grid lines
-            for (let i = 0; i < 10; i++) {
-              const y = i * (height / 10);
-              canvasContext.beginPath();
-              canvasContext.moveTo(0, y);
-              canvasContext.lineTo(width, y);
-              canvasContext.stroke();
-            }
+            // Draw amplitude scale on the left side
+            drawAmplitudeScale(height);
 
-            // Vertical grid lines
-            for (let i = 0; i < 10; i++) {
-              const x = i * (width / 10);
-              canvasContext.beginPath();
-              canvasContext.moveTo(x, 0);
-              canvasContext.lineTo(x, height);
-              canvasContext.stroke();
-            }
+            // Get audio info for frequency labels
+            const info = audioProcessor.get_info();
+
+            // Draw frequency axis labels with logarithmic spacing
+            drawLogFrequencyLabels(width, height, info);
 
             // Create gradient for the spectrum visualization
             const gradient = canvasContext.createLinearGradient(
@@ -2320,16 +2317,18 @@ Do not try to understand what happens - even the programmer can't explain it in 
             gradient.addColorStop(0.5, "rgba(92, 195, 255, 0.8)"); // Middle color
             gradient.addColorStop(1, "rgba(255, 255, 255, 0.9)"); // Top color (higher amplitude)
 
-            // Draw the spectrum
+            // Apply subtle smoothing for better visualization
+            const smoothedData = smoothData(spectrumData, 3); // Light smoothing
+
+            // Draw the spectrum as a filled area
             canvasContext.beginPath();
             canvasContext.moveTo(0, height);
 
-            const barWidth = width / spectrumData.length;
+            const barWidth = width / smoothedData.length;
 
-            for (let i = 0; i < spectrumData.length; i++) {
+            for (let i = 0; i < smoothedData.length; i++) {
               const x = i * barWidth;
-              const y = height - spectrumData[i] * height;
-
+              const y = height - smoothedData[i] * height;
               canvasContext.lineTo(x, y);
             }
 
@@ -2339,34 +2338,20 @@ Do not try to understand what happens - even the programmer can't explain it in 
             canvasContext.fillStyle = gradient;
             canvasContext.fill();
 
+            // Add line on top for better visibility
+            canvasContext.beginPath();
+            canvasContext.moveTo(0, height);
+            for (let i = 0; i < smoothedData.length; i++) {
+              const x = i * barWidth;
+              const y = height - smoothedData[i] * height;
+              canvasContext.lineTo(x, y);
+            }
             canvasContext.strokeStyle = "rgba(255, 255, 255, 0.8)";
             canvasContext.lineWidth = 2;
             canvasContext.stroke();
 
-            // Add frequency labels
-            canvasContext.fillStyle = "#aaaaaa";
-            canvasContext.font = "12px Arial";
-            canvasContext.textAlign = "center";
-
-            // Get audio info to calculate frequencies
-            const info = audioProcessor.get_info();
-            if (info && info.sample_rate) {
-              const nyquistFreq = info.sample_rate / 2;
-              const numLabels = 5;
-
-              for (let i = 0; i <= numLabels; i++) {
-                const x = (i / numLabels) * width;
-                const freq = (i / numLabels) * nyquistFreq;
-                let freqLabel = freq.toFixed(0) + " Hz";
-
-                // Convert to kHz for higher frequencies
-                if (freq >= 1000) {
-                  freqLabel = (freq / 1000).toFixed(1) + " kHz";
-                }
-
-                canvasContext.fillText(freqLabel, x, height - 5);
-              }
-            }
+            // Draw peak indicators for significant peaks
+            drawPeakIndicators(width, height, smoothedData, info);
           } catch (spectrumError) {
             console.error("Error getting spectrum data:", spectrumError);
             canvasContext.fillStyle = "#aaaaaa";
@@ -2384,6 +2369,226 @@ Do not try to understand what happens - even the programmer can't explain it in 
         }
       }
 
+      // Helper function to draw amplitude scale
+      function drawAmplitudeScale(height) {
+        canvasContext.fillStyle = "#aaaaaa";
+        canvasContext.font = "12px Arial";
+        canvasContext.textAlign = "left";
+
+        // Draw scale markers at 0%, 25%, 50%, 75%, and 100%
+        const levels = [0, 0.25, 0.5, 0.75, 1.0];
+        for (const level of levels) {
+          const y = height - level * height;
+          const label = Math.round(level * 100) + "%";
+
+          // Draw small tick mark
+          canvasContext.fillRect(0, y, 4, 1);
+
+          // Draw label
+          canvasContext.fillText(label, 7, y + 4);
+        }
+      }
+
+      // Helper function to draw peak indicators for notable frequencies
+      function drawPeakIndicators(width, height, data, info) {
+        if (!info || !info.sample_rate) return;
+
+        // Find significant peaks
+        const peakThreshold = 0.5; // Only mark peaks above 50% of max amplitude
+        const peakMinDistance = Math.floor(data.length / 50); // Minimum distance between peaks
+        const peaks = findPeaks(data, peakThreshold, peakMinDistance);
+
+        if (peaks.length === 0) return;
+
+        // Calculate frequency for each peak
+        const nyquistFreq = info.sample_rate / 2;
+
+        // Draw peak markers and labels
+        canvasContext.fillStyle = "rgba(255, 220, 100, 0.9)";
+        canvasContext.font = "10px Arial";
+        canvasContext.textAlign = "center";
+
+        for (const peakIndex of peaks) {
+          const x = peakIndex * (width / data.length);
+          const y = height - data[peakIndex] * height;
+
+          // Draw peak marker (small circle)
+          canvasContext.beginPath();
+          canvasContext.arc(x, y, 3, 0, Math.PI * 2);
+          canvasContext.fill();
+
+          // Calculate and format frequency at this peak
+          const normalizedPosition = peakIndex / data.length;
+          let freq;
+
+          // Calculate frequency based on logarithmic scale
+          const minFreq = 20;
+          const maxFreq = nyquistFreq;
+          const minLog = Math.log10(minFreq);
+          const maxLog = Math.log10(maxFreq);
+          const logFreq = minLog + normalizedPosition * (maxLog - minLog);
+          freq = Math.pow(10, logFreq);
+
+          // Format frequency label
+          let freqLabel;
+          if (freq >= 1000) {
+            freqLabel = `${(freq / 1000).toFixed(1)}kHz`;
+          } else {
+            freqLabel = `${Math.round(freq)}Hz`;
+          }
+
+          // Draw frequency label above peak
+          canvasContext.fillText(freqLabel, x, y - 10);
+        }
+      }
+
+      // Helper function to find peaks in data
+      function findPeaks(data, threshold, minDistance) {
+        const peaks = [];
+
+        // Calculate the minimum amplitude for a peak
+        const minAmp = threshold;
+
+        // Find local maxima
+        for (let i = 1; i < data.length - 1; i++) {
+          if (
+            data[i] > data[i - 1] &&
+            data[i] > data[i + 1] &&
+            data[i] >= minAmp
+          ) {
+            // Check if this peak is far enough from previous peaks
+            const farEnough = peaks.every(
+              (peakIndex) => Math.abs(i - peakIndex) >= minDistance,
+            );
+            if (farEnough) {
+              peaks.push(i);
+
+              // Limit to a reasonable number of peaks
+              if (peaks.length >= 5) break;
+            }
+          }
+        }
+
+        return peaks;
+      }
+
+      // Helper function to draw grid
+      function drawGrid(width, height) {
+        canvasContext.strokeStyle = "rgba(100, 100, 100, 0.2)";
+        canvasContext.lineWidth = 1;
+
+        // Horizontal grid lines (amplitude)
+        for (let i = 0; i < 10; i++) {
+          const y = i * (height / 10);
+          canvasContext.beginPath();
+          canvasContext.moveTo(0, y);
+          canvasContext.lineTo(width, y);
+          canvasContext.stroke();
+        }
+
+        // Draw logarithmically spaced vertical grid lines (frequency)
+        const decades = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+
+        for (const freq of decades) {
+          if (freq >= 20 && freq <= 20000) {
+            // Human hearing range
+            const x = logFreqToX(freq, width);
+            canvasContext.beginPath();
+            canvasContext.moveTo(x, 0);
+            canvasContext.lineTo(x, height);
+
+            // Make kHz markers slightly darker
+            if (freq % 1000 === 0) {
+              canvasContext.strokeStyle = "rgba(150, 150, 150, 0.3)";
+            } else {
+              canvasContext.strokeStyle = "rgba(100, 100, 100, 0.2)";
+            }
+
+            canvasContext.stroke();
+          }
+        }
+      }
+
+      // Helper function to draw logarithmic frequency labels
+      function drawLogFrequencyLabels(width, height, info) {
+        if (!info || !info.sample_rate) return;
+
+        canvasContext.fillStyle = "#aaaaaa";
+        canvasContext.font = "12px Arial";
+        canvasContext.textAlign = "center";
+
+        // Draw major frequency markers
+        const freqLabels = [
+          20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000,
+        ];
+
+        for (const freq of freqLabels) {
+          if (freq >= 20 && freq <= 20000) {
+            // Stay within human hearing range
+            const x = logFreqToX(freq, width);
+
+            let label;
+            if (freq >= 1000) {
+              label = `${freq / 1000}kHz`; // Convert to kHz
+            } else {
+              label = `${freq}Hz`;
+            }
+
+            // Only show some labels to avoid crowding
+            if (
+              freq === 20 ||
+              freq === 100 ||
+              freq === 1000 ||
+              freq === 10000 ||
+              freq === 20000
+            ) {
+              canvasContext.fillText(label, x, height - 5);
+            }
+          }
+        }
+      }
+
+      // Convert frequency to x-position using logarithmic scaling
+      function logFreqToX(freq, width) {
+        const minFreq = 20; // 20 Hz
+        const maxFreq = 20000; // 20 kHz
+
+        const minLog = Math.log10(minFreq);
+        const maxLog = Math.log10(maxFreq);
+        const logRange = maxLog - minLog;
+
+        const logFreq = Math.log10(freq);
+        const normalizedPos = (logFreq - minLog) / logRange;
+
+        return normalizedPos * width;
+      }
+
+      // Simple moving average smoothing for spectrum data
+      function smoothData(data, windowSize) {
+        if (windowSize <= 1 || data.length <= windowSize) {
+          return data;
+        }
+
+        const result = new Array(data.length);
+
+        // Handle first few points that don't have enough predecessors
+        for (let i = 0; i < windowSize - 1; i++) {
+          result[i] = data[i];
+        }
+
+        // Apply moving average for the rest
+        for (let i = windowSize - 1; i < data.length; i++) {
+          let sum = 0;
+          for (let j = 0; j < windowSize; j++) {
+            sum += data[i - j];
+          }
+          result[i] = sum / windowSize;
+        }
+
+        return result;
+      }
+
+      // Empty spectrum drawing function - also updated with log scale
       function drawEmptySpectrum() {
         if (!canvasContext) return;
 
@@ -2396,26 +2601,10 @@ Do not try to understand what happens - even the programmer can't explain it in 
         canvasContext.fillRect(0, 0, width, height);
 
         // Draw grid lines for better readability
-        canvasContext.strokeStyle = "rgba(100, 100, 100, 0.2)";
-        canvasContext.lineWidth = 1;
+        drawGrid(width, height);
 
-        // Horizontal grid lines
-        for (let i = 0; i < 10; i++) {
-          const y = i * (height / 10);
-          canvasContext.beginPath();
-          canvasContext.moveTo(0, y);
-          canvasContext.lineTo(width, y);
-          canvasContext.stroke();
-        }
-
-        // Vertical grid lines
-        for (let i = 0; i < 10; i++) {
-          const x = i * (width / 10);
-          canvasContext.beginPath();
-          canvasContext.moveTo(x, 0);
-          canvasContext.lineTo(x, height);
-          canvasContext.stroke();
-        }
+        // Draw amplitude scale
+        drawAmplitudeScale(height);
 
         // Add text prompt
         canvasContext.fillStyle = "#aaaaaa";
@@ -2428,20 +2617,7 @@ Do not try to understand what happens - even the programmer can't explain it in 
         );
 
         // Add frequency labels
-        canvasContext.font = "12px Arial";
-
-        for (let i = 0; i <= 5; i++) {
-          const x = (i / 5) * width;
-          const freq = (i / 5) * 22050; // Assume 44.1 kHz sample rate
-          let freqLabel = freq.toFixed(0) + " Hz";
-
-          // Convert to kHz for higher frequencies
-          if (freq >= 1000) {
-            freqLabel = (freq / 1000).toFixed(1) + " kHz";
-          }
-
-          canvasContext.fillText(freqLabel, x, height - 5);
-        }
+        drawLogFrequencyLabels(width, height, { sample_rate: 44100 });
       }
 
       // Helper function to convert AudioBuffer to WAV

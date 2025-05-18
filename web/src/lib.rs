@@ -124,9 +124,13 @@ impl WasmAudioProcessor {
         serde_wasm_bindgen::to_value(&js_info).unwrap_or(JsValue::null())
     }
 
-    // Get spectrum data for visualization
     #[wasm_bindgen]
-    pub fn get_spectrum_data(&self, channel_index: usize) -> Result<Float32Array> {
+    pub fn get_spectrum_data(
+        &self,
+        channel_index: usize,
+        max_points: usize,
+        use_log_scale: bool,
+    ) -> Result<Float32Array> {
         if let Some(fft_data) = self.processor.fft_data() {
             if channel_index >= fft_data.len() {
                 return Err(format!(
@@ -137,17 +141,93 @@ impl WasmAudioProcessor {
             }
 
             let channel_data = &fft_data[channel_index];
-            let result = Float32Array::new_with_length(channel_data.len() as u32);
+            let num_bins = channel_data.len();
 
-            // Copy amplitude data
-            for (i, value) in channel_data.iter().enumerate() {
-                result.set_index(i as u32, value.to_polar().0 as f32);
+            // First, extract the amplitude data from the complex values
+            let mut amplitudes = Vec::with_capacity(num_bins);
+            for value in channel_data.iter() {
+                let (amplitude, _) = value.to_polar();
+                amplitudes.push(amplitude as f32);
             }
 
-            Ok(result)
+            // Maximum frequency (Nyquist) in Hz
+            let max_freq = self.processor.sample_rate() as f32 / 2.0;
+
+            // If we need to downsample (for large files), or use log scale
+            if num_bins > max_points || use_log_scale {
+                let mut result = Vec::with_capacity(max_points);
+
+                if use_log_scale {
+                    // Logarithmic scaling for frequencies
+                    // Calculate with log10 scale
+                    // log10(20Hz) ? 1.3, log10(20kHz) ? 4.3
+                    // We want to map this 1.3-4.3 range to 0-max_points
+                    const MIN_FREQ: f32 = 20.0; // 20 Hz, lowest audible frequency
+                    let log_min = MIN_FREQ.log10();
+                    let log_max = max_freq.log10();
+                    let log_range = log_max - log_min;
+
+                    for i in 0..max_points {
+                        // Calculate logarithmically spaced frequency point
+                        let log_freq = log_min + (log_range * i as f32 / (max_points - 1) as f32);
+                        let freq = 10.0f32.powf(log_freq);
+
+                        // Convert frequency to bin index in the original FFT data
+                        let bin_f = freq * (num_bins as f32) / max_freq;
+                        let bin = bin_f as usize;
+
+                        // Get amplitude using linear interpolation between bins
+                        let amplitude = if bin >= num_bins - 1 {
+                            amplitudes[num_bins - 1]
+                        } else {
+                            let frac = bin_f - bin as f32;
+                            amplitudes[bin] * (1.0 - frac) + amplitudes[bin + 1] * frac
+                        };
+
+                        result.push(amplitude);
+                    }
+                } else {
+                    // Linear frequency spacing, just downsample
+                    for i in 0..max_points {
+                        let bin = (i * (num_bins - 1)) / (max_points - 1);
+                        result.push(amplitudes[bin]);
+                    }
+                }
+
+                Ok(self.normalize_and_convert_to_float32_array(&result))
+            } else {
+                // No downsampling needed, just return the normalized data
+                let mut result = Vec::with_capacity(num_bins);
+                for (_, amplitude) in amplitudes.iter().enumerate() {
+                    result.push(*amplitude);
+                }
+                Ok(self.normalize_and_convert_to_float32_array(&result))
+            }
         } else {
             Err("No FFT data available".to_string())
         }
+    }
+
+    fn normalize_and_convert_to_float32_array(&self, amplitudes: &Vec<f32>) -> Float32Array {
+        let result = Float32Array::new_with_length(amplitudes.len() as u32);
+        let max_amplitude = Self::max_amplitude(amplitudes);
+        if max_amplitude > 0.0 {
+            for (pos, e) in amplitudes.iter().enumerate() {
+                result.set_index(pos as u32, *e / max_amplitude);
+            }
+        } else {
+            for (pos, e) in amplitudes.iter().enumerate() {
+                result.set_index(pos as u32, *e);
+            }
+        }
+        result
+    }
+
+    fn max_amplitude(amplitudes: &Vec<f32>) -> f32 {
+        let max_amplitude = amplitudes
+            .iter()
+            .fold(f32::EPSILON, |max, &amp| max.max(amp));
+        max_amplitude
     }
 
     // Apply power function to the amplitude
