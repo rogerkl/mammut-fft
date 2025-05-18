@@ -317,12 +317,14 @@ impl WasmAudioProcessor {
 
         match result {
             Ok((sample_rate, channels)) => {
-
                 self.original_samples = Some(channels.clone());
 
                 // Set the audio data in the processor
-                self.processor
-                    .set_audio_data(sample_rate, channels.len().try_into().unwrap(), channels)?;
+                self.processor.set_audio_data(
+                    sample_rate,
+                    channels.len().try_into().unwrap(),
+                    channels,
+                )?;
                 // Perform FFT on the loaded data
                 self.processor.perform_fft()?;
                 Ok(())

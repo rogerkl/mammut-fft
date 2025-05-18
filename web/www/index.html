@@ -66,8 +66,6 @@
         />
       </h1>
 
-      <div id="status" class="status">Loading WASM module...</div>
-
       <div id="uploadSection" class="upload-section">
         <label for="audioFile"
           >Select WAV file to process or drop file here</label
@@ -88,6 +86,8 @@
           "
         ></div>
       </div>
+
+      <div id="status" class="status">Loading WASM module...</div>
 
       <!-- Main controls always visible at the top -->
       <div class="main-controls" style="display: none">
@@ -882,7 +882,7 @@ Do not try to understand what happens - even the programmer can't explain it in 
               //  file.type === "audio/wav" ||
               //  file.name.toLowerCase().endsWith(".wav")
               //) {
-                handleSelectedFile(file);
+              handleSelectedFile(file);
               // else {
               //  updateStatus("Please drop a WAV file only", true);
               //}
@@ -1641,6 +1641,26 @@ Do not try to understand what happens - even the programmer can't explain it in 
         }
       }
 
+      function normalizeRootNote(note) {
+        switch (note.toUpperCase()) {
+          case "CB":
+            return "B";
+          case "DB":
+            return "C#";
+          case "EB":
+            return "D#";
+          case "FB":
+            return "E";
+          case "GB":
+            return "F#";
+          case "AB":
+            return "G#";
+          case "BB":
+            return "A#";
+        }
+        return note;
+      }
+
       // Note frequency calculation
       function getNoteFrequency(note, octave) {
         // Base frequencies for notes in octave 4
@@ -1685,8 +1705,11 @@ Do not try to understand what happens - even the programmer can't explain it in 
       }
 
       // Add note to chord
-      function addNoteToChord(note, octave) {
-        const freq = getNoteFrequency(note, octave);
+      function addNoteToChord(rootNote, note, octave) {
+        const rootfreq = getNoteFrequency(rootNote, octave);
+        var freq = getNoteFrequency(note, octave);
+        if (freq < rootfreq) 
+          freq = getNoteFrequency(note, octave + 1);
 
         // Find the first available frequency input that's empty or zero
         for (let i = 1; i <= 5; i++) {
@@ -1745,7 +1768,7 @@ Do not try to understand what happens - even the programmer can't explain it in 
 
         key.addEventListener("click", function () {
           const note = this.getAttribute("data-note");
-          addNoteToChord(note, currentOctave);
+          addNoteToChord(note, note, currentOctave);
 
           // Visual feedback - briefly highlight the key
           this.classList.add("key-pressed");
@@ -1764,7 +1787,7 @@ Do not try to understand what happens - even the programmer can't explain it in 
           if (!rootNote) return;
 
           // Normalize note input (handle flat notation)
-          const normalizedRoot = rootNote.replace("b", "#");
+          const normalizedRoot = normalizeRootNote(rootNote);
 
           // Clear existing frequencies
           clearChordFrequencies();
@@ -1772,101 +1795,120 @@ Do not try to understand what happens - even the programmer can't explain it in 
           // Add chord notes based on the selected chord type
           switch (chordType) {
             case "major":
-              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(normalizedRoot, normalizedRoot, currentOctave); // Root
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 4),
                 currentOctave,
               ); // Major third
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 7),
                 currentOctave,
               ); // Perfect fifth
               break;
             case "minor":
-              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(normalizedRoot, normalizedRoot, currentOctave); // Root
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 3),
                 currentOctave,
               ); // Minor third
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 7),
                 currentOctave,
               ); // Perfect fifth
               break;
             case "aug":
-              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(normalizedRoot, normalizedRoot, currentOctave); // Root
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 4),
                 currentOctave,
               ); // Major third
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 8),
                 currentOctave,
               );
               break;
             case "dim":
-              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(normalizedRoot, normalizedRoot, currentOctave); // Root
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 3),
                 currentOctave,
               ); // Minor third
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 6),
                 currentOctave,
               );
               break;
             case "7th":
-              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(normalizedRoot, normalizedRoot, currentOctave); // Root
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 4),
                 currentOctave,
               ); // Major third
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 7),
                 currentOctave,
               ); // Perfect fifth
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 10),
                 currentOctave,
               ); // Minor seventh
               break;
             case "maj7":
-              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(normalizedRoot, normalizedRoot, currentOctave); // Root
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 4),
                 currentOctave,
               ); // Major third
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 7),
                 currentOctave,
               ); // Perfect fifth
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 11),
                 currentOctave,
               ); // Major seventh
               break;
             case "min7":
-              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(normalizedRoot, normalizedRoot, currentOctave); // Root
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 3),
                 currentOctave,
               ); // Minor third
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 7),
                 currentOctave,
               ); // Perfect fifth
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 10),
                 currentOctave,
               ); // Minor seventh
               break;
             case "sus4":
-              addNoteToChord(normalizedRoot, currentOctave); // Root
+              addNoteToChord(normalizedRoot, normalizedRoot, currentOctave); // Root
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 5),
                 currentOctave,
               ); // Perfect fourth
               addNoteToChord(
+                normalizedRoot,
                 getNoteFromSemitones(normalizedRoot, 7),
                 currentOctave,
               ); // Perfect fifth
@@ -1911,7 +1953,6 @@ Do not try to understand what happens - even the programmer can't explain it in 
           }
         }
 
-        // Calculate the new note index (wrap around to stay within 0-11)
         const newIndex = (rootIndex + semitones) % 12;
 
         return notes[newIndex];
