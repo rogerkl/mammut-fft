@@ -466,7 +466,8 @@ impl AudioProcessor {
     /// * `width_cents` - Width around each frequency to keep (0-50 cents)
     /// * `harmonics_strength` - Harmonic strength factor (0-1)
     ///   - 0: Only fundamental frequencies
-    ///   - 1: Harmonics follow sawtooth wave amplitude decay (1/n)
+    ///   - 0.5: Harmonics follow sawtooth wave amplitude decay (1/n)
+    ///   - 1: Harmonics have equal strength as fundamental
     pub fn apply_chord_filter(
         &mut self,
         frequencies: [f64; 5],
@@ -527,7 +528,14 @@ impl AudioProcessor {
                             amp // Fundamental frequency has full amplitude
                         } else {
                             // Linear interpolation between no harmonics (0) and sawtooth harmonics (1)
-                            amp * harmonics_strength / harmonic as f64
+                            if harmonics_strength > 0.5 {
+                                let harm_amp_1_n = 1. / harmonic as f64;
+                                let harm_amp_dist_to_1 = 1. - harm_amp_1_n;
+                                amp * (harm_amp_1_n
+                                    + (harmonics_strength - 0.5) * 2. * harm_amp_dist_to_1)
+                            } else {
+                                amp * 2. * harmonics_strength / harmonic as f64
+                            }
                         };
 
                         // Calculate width in Hz based on cents
