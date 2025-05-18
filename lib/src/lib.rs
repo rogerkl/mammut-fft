@@ -8,6 +8,7 @@
 use wasm_bindgen::prelude::*;
 
 pub mod audio_read_write;
+pub mod operations;
 mod processor;
 pub mod utils;
 
