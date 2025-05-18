@@ -25,10 +25,10 @@ impl AudioProcessor {
     ///
     /// * `Result<(), String>` - Success or an error message
     pub fn swap_bins(&mut self, block_size: f64, repeat: f64) -> Result<()> {
-        if block_size < 0.0 || block_size > 100.0 {
+        if !(0.0..=100.0).contains(&block_size) {
             return Err("Block size must be between 0 and 100 percent".to_string());
         }
-        if repeat < 0.0 || repeat > 100.0 {
+        if !(0.0..=100.0).contains(&repeat) {
             return Err("Repeat size must be between 0 and 100 percent".to_string());
         }
 
@@ -120,7 +120,7 @@ impl AudioProcessor {
     ///
     /// * `Result<(), String>` - Success or an error message
     pub fn swap_channels(&mut self, repeat: f64) -> Result<()> {
-        if repeat < 0.0 || repeat > 100.0 {
+        if !(0.0..=100.0).contains(&repeat) {
             return Err("Repeat size must be between 0 and 100 percent".to_string());
         }
 

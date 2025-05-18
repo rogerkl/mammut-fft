@@ -52,7 +52,7 @@ fn print_help() {
 
 /// Process a user command.
 fn process_command(command: &str, processor: &mut AudioProcessor) {
-    let parts: Vec<&str> = command.trim().split_whitespace().collect();
+    let parts: Vec<&str> = command.split_whitespace().collect();
 
     if parts.is_empty() {
         return;
@@ -229,7 +229,7 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
 
             let amp1 = match parts[2].parse::<f64>() {
                 Ok(value) => {
-                    if value < 0.0 || value > 1.0 {
+                    if !(0.0..=1.0).contains(&value) {
                         println!("Error: amplitude 1 must be between 0 and 1");
                         return;
                     }
@@ -251,7 +251,7 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
 
             let amp2 = match parts[4].parse::<f64>() {
                 Ok(value) => {
-                    if value < 0.0 || value > 1.0 {
+                    if !(0.0..=1.0).contains(&value) {
                         println!("Error: amplitude 2 must be between 0 and 1");
                         return;
                     }
@@ -273,7 +273,7 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
 
             let amp3 = match parts[6].parse::<f64>() {
                 Ok(value) => {
-                    if value < 0.0 || value > 1.0 {
+                    if !(0.0..=1.0).contains(&value) {
                         println!("Error: amplitude 3 must be between 0 and 1");
                         return;
                     }
@@ -295,7 +295,7 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
 
             let amp4 = match parts[8].parse::<f64>() {
                 Ok(value) => {
-                    if value < 0.0 || value > 1.0 {
+                    if !(0.0..=1.0).contains(&value) {
                         println!("Error: amplitude 4 must be between 0 and 1");
                         return;
                     }
@@ -317,7 +317,7 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
 
             let amp5 = match parts[10].parse::<f64>() {
                 Ok(value) => {
-                    if value < 0.0 || value > 1.0 {
+                    if !(0.0..=1.0).contains(&value) {
                         println!("Error: amplitude 5 must be between 0 and 1");
                         return;
                     }
@@ -331,7 +331,7 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
 
             let width = match parts[11].parse::<f64>() {
                 Ok(value) => {
-                    if value < 0.0 || value > 50.0 {
+                    if !(0.0..=50.0).contains(&value) {
                         println!("Error: width must be between 0 and 50 cents");
                         return;
                     }
@@ -345,7 +345,7 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
 
             let harmonics = match parts[12].parse::<f64>() {
                 Ok(value) => {
-                    if value < 0.0 || value > 1.0 {
+                    if !(0.0..=1.0).contains(&value) {
                         println!("Error: harmonics must be between 0 and 1");
                         return;
                     }
@@ -430,7 +430,7 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
             // Parse the block_size parameter (percentage)
             let block_size = match parts[1].parse::<f64>() {
                 Ok(value) => {
-                    if value < 0.0 || value > 100.0 {
+                    if !(0.0..=100.0).contains(&value) {
                         println!("Error: block_size must be between 0 and 100");
                         return;
                     }
@@ -445,7 +445,7 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
             // Parse the repeat parameter
             let repeat = match parts[2].parse::<f64>() {
                 Ok(value) => {
-                    if value < 0.0 || value > 100.0 {
+                    if !(0.0..=100.0).contains(&value) {
                         println!("Error: repeat must be between 0 and 100");
                         return;
                     }
@@ -476,7 +476,7 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
             // Parse the repeat parameter
             let repeat = match parts[1].parse::<f64>() {
                 Ok(value) => {
-                    if value < 0.0 || value > 100.0 {
+                    if !(0.0..=100.0).contains(&value) {
                         println!("Error: repeat must be between 0 and 100");
                         return;
                     }

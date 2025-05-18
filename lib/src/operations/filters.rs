@@ -121,11 +121,11 @@ impl AudioProcessor {
         width_cents: f64,
         harmonics_strength: f64,
     ) -> Result<()> {
-        if width_cents < 0.0 || width_cents > 50.0 {
+        if !(0.0..=50.0).contains(&width_cents) {
             return Err("Width must be between 0 and 50 cents".to_string());
         }
 
-        if harmonics_strength < 0.0 || harmonics_strength > 1.0 {
+        if !(0.0..=1.0).contains(&harmonics_strength) {
             return Err("Harmonics strength must be between 0 and 1".to_string());
         }
 

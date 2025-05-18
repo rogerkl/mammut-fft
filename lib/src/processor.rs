@@ -56,6 +56,12 @@ impl std::fmt::Debug for AudioProcessor {
     }
 }
 
+impl Default for AudioProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AudioProcessor {
     /// Create a new `AudioProcessor` instance.
     pub fn new() -> Self {

@@ -47,11 +47,9 @@ impl AudioProcessor {
                             // Zero out amplitudes above threshold
                             channel_data[i] = Complex64::new(0.0, 0.0);
                         }
-                    } else {
-                        if amplitude < threshold_level {
-                            // Zero out amplitudes below threshold
-                            channel_data[i] = Complex64::new(0.0, 0.0);
-                        }
+                    } else if amplitude < threshold_level {
+                        // Zero out amplitudes below threshold
+                        channel_data[i] = Complex64::new(0.0, 0.0);
                     }
                 }
             }

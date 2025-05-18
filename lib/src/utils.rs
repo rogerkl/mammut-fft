@@ -85,7 +85,7 @@ pub fn load_from_wav(processor: &mut AudioProcessor, filename: &str) -> Result<(
             processor.perform_fft()?;
             Ok(())
         }
-        Err(error) => Err(format!("Error: {}", error.to_string())),
+        Err(error) => Err(format!("Error: {}", error)),
     }
 }
 
