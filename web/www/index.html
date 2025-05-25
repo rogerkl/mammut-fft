@@ -75,6 +75,18 @@
           <button class="custom-file-button" id="openAudioButton">
             Open Audio
           </button>
+          <div class="form-group">
+            <label for="bufferMultiplier">Buffer Size Multiplier:</label>
+            <input
+              type="number"
+              id="bufferMultiplier"
+              min="1"
+              max="8"
+              step="1"
+              value="1"
+              class="number-input"
+            />
+          </div>
         </div>
         <div class="drag-message">Release to upload audio file</div>
         <div
@@ -145,6 +157,7 @@
           <button class="tab-button" data-tab="chord-filter">
             Chord Filter
           </button>
+          <button class="tab-button" data-tab="convolution">Convolution</button>
         </div>
 
         <div class="tabs-content">
@@ -763,6 +776,70 @@
               </div>
             </div>
           </div>
+
+          <div class="tab-content" id="convolution-tab">
+            <div class="control-group">
+              <h3>Convolution/Correlation</h3>
+              <p class="description">
+                Convolve or correlate your audio with another audio file.
+                Convolution is useful for applying reverb effects, while
+                correlation can be used for audio analysis.
+              </p>
+
+              <div class="convolution-controls">
+                <div class="form-group">
+                  <label for="convolveFile">Select IR/Second File:</label>
+                  <div class="file-input-wrapper">
+                    <input
+                      type="file"
+                      id="convolveFile"
+                      accept="audio/*"
+                      style="display: none"
+                    />
+                    <button
+                      class="custom-file-button"
+                      id="selectConvolveFileButton"
+                    >
+                      Select File
+                    </button>
+                    <span
+                      id="convolveFileInfo"
+                      style="margin-left: 10px"
+                    ></span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="convolutionMode">Operation Mode:</label>
+                  <select id="convolutionMode">
+                    <option value="convolve">Convolution (Reverb)</option>
+                    <option value="correlate">Correlation (Analysis)</option>
+                  </select>
+                  <div class="help-text">
+                    Convolution time-reverses the IR before multiplying spectra.
+                    Correlation directly multiplies spectra.
+                  </div>
+                </div>
+
+                <div class="slider-container">
+                  <label for="wetMixSlider">Wet/Dry Mix:</label>
+                  <input
+                    type="range"
+                    id="wetMixSlider"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value="1"
+                  />
+                  <span id="wetMixValue">1.00 (100% wet)</span>
+                </div>
+
+                <button id="applyConvolutionButton" class="success-button">
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="footer">
@@ -938,6 +1015,9 @@ Do not try to understand what happens - even the programmer can't explain it in 
           document
             .getElementById("applyChordFilterButton")
             .addEventListener("click", applyChordFilter);
+          document
+            .getElementById("applyConvolutionButton")
+            .addEventListener("click", applyConvolution);
 
           // Filter type change handler
           document
@@ -1091,6 +1171,32 @@ Do not try to understand what happens - even the programmer can't explain it in 
                 this.value;
             });
 
+          document
+            .getElementById("selectConvolveFileButton")
+            .addEventListener("click", function () {
+              document.getElementById("convolveFile").click();
+            });
+
+          document
+            .getElementById("convolveFile")
+            .addEventListener("change", function (e) {
+              if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const fileSize = (file.size / 1024).toFixed(1);
+                document.getElementById("convolveFileInfo").textContent =
+                  `Selected: ${file.name} (${fileSize} KB)`;
+              }
+            });
+
+          document
+            .getElementById("wetMixSlider")
+            .addEventListener("input", function () {
+              const wetValue = parseFloat(this.value);
+              const wetPercent = Math.round(wetValue * 100);
+              document.getElementById("wetMixValue").textContent =
+                `${wetValue.toFixed(2)} (${wetPercent}% wet)`;
+            });
+
           setupTabs();
 
           // Draw empty grid on the canvas
@@ -1138,95 +1244,11 @@ Do not try to understand what happens - even the programmer can't explain it in 
         document.getElementById("fileInfo").textContent =
           `Selected: ${selectedFileName} (${fileSize} KB)`;
 
+        const bufferMultiplier = parseInt(
+          document.getElementById("bufferMultiplier").value,
+        );
         // Automatically load the audio
-        loadAudio(file);
-      }
-
-      async function loadAudio(directFile = null) {
-        try {
-          updateStatus("Loading audio file...");
-
-          // Use the provided file or get it from the input
-          const file =
-            directFile || document.getElementById("audioFile").files[0];
-
-          if (!file) {
-            updateStatus("Please select a file first", true);
-            return;
-          }
-
-          updateStatus(
-            `Reading file: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
-          );
-
-          // Create AudioContext (if not already created)
-          if (!audioContext) {
-            audioContext = new (window.AudioContext ||
-              window.webkitAudioContext)();
-            updateStatus(
-              `Created audio context with sample rate: ${audioContext.sampleRate} Hz`,
-            );
-          }
-
-          // Read the file as ArrayBuffer
-          updateStatus("Reading file as ArrayBuffer...");
-          const arrayBuffer = await file.arrayBuffer();
-          updateStatus(
-            `File loaded into memory (${(arrayBuffer.byteLength / 1024).toFixed(1)} KB)`,
-          );
-
-          // Decode the audio data
-          updateStatus("Decoding audio data...");
-          const uint8Array = new Uint8Array(arrayBuffer);
-
-          try {
-            audioProcessor.read_audio_bytes(uint8Array);
-          } catch (decodeError) {
-            updateStatus(
-              `Failed to decode audio: ${decodeError.message}. Make sure it's a valid sound file.`,
-              true,
-            );
-            console.error("Decode error:", decodeError);
-            return;
-          }
-
-          updateStatus(`Audio decoded: ${audioProcessor.get_info()}`);
-
-          // Display audio info
-          try {
-            const info = audioProcessor.get_info();
-            console.log("Audio info:", info);
-            const duration = info.time_data
-              ? info.time_data.duration_seconds.toFixed(2) + "s"
-              : "unknown duration";
-            updateStatus(
-              `Audio loaded: ${info.channels} channels, ${info.sample_rate} Hz, ${duration}`,
-              false,
-              true,
-            );
-          } catch (infoError) {
-            console.error("Error getting audio info:", infoError);
-          }
-
-          // Show controls
-          document.querySelector(".main-controls").style.display = "block";
-          document.querySelector(".operations-tabs").style.display = "block";
-          //document.querySelector('.audio-controls').style.display = 'flex';
-          //document.querySelector('.controls').style.display = 'grid';
-
-          // Update the audio player
-          updateStatus("Preparing audio player...");
-          await updateAudioPlayer();
-
-          // Draw the spectrum
-          updateStatus("Drawing spectrum visualization...");
-          drawSpectrum();
-
-          updateStatus("Audio loaded and ready for processing!", false, true);
-        } catch (error) {
-          updateStatus(`Error loading audio: ${error.message}`, true);
-          console.error("Error loading audio:", error);
-        }
+        loadAudioWithPadding(file, bufferMultiplier);
       }
 
       function resetAudio() {
@@ -2048,6 +2070,144 @@ Do not try to understand what happens - even the programmer can't explain it in 
           );
           console.error("Error splitting frequency spectrum:", error);
         }
+      }
+
+      const originalHandleSelectedFile = handleSelectedFile;
+      handleSelectedFile = function (file) {
+        selectedFileName = file.name;
+        const fileSize = (file.size / 1024).toFixed(1);
+        document.getElementById("fileInfo").textContent =
+          `Selected: ${selectedFileName} (${fileSize} KB)`;
+
+        // Check if we should use padded loading
+        const bufferMultiplier = parseInt(
+          document.getElementById("bufferMultiplier").value,
+        );
+        if (bufferMultiplier > 1) {
+          loadAudioWithPadding(file, bufferMultiplier);
+        } else {
+          // Use the original loading method
+          loadAudioWithPadding(file, 1);
+        }
+      };
+
+      // New function to load audio with padding
+      async function loadAudioWithPadding(file, bufferMultiplier) {
+        try {
+          updateStatus(
+            `Loading audio with ${bufferMultiplier}x buffer size...`,
+          );
+
+          if (!file) {
+            updateStatus("Please select a file first", true);
+            return;
+          }
+
+          updateStatus(
+            `Reading file: ${file.name} (${(file.size / 1024).toFixed(1)} KB) with ${bufferMultiplier}x buffer`,
+          );
+
+          // Create AudioContext (if not already created)
+          if (!audioContext) {
+            audioContext = new (window.AudioContext ||
+              window.webkitAudioContext)();
+            updateStatus(
+              `Created audio context with sample rate: ${audioContext.sampleRate} Hz`,
+            );
+          }
+
+          // Read the file as ArrayBuffer
+          updateStatus("Reading file as ArrayBuffer...");
+          const arrayBuffer = await file.arrayBuffer();
+          updateStatus(
+            `File loaded into memory (${(arrayBuffer.byteLength / 1024).toFixed(1)} KB)`,
+          );
+
+          // Decode the audio data
+          updateStatus("Decoding audio data...");
+          const uint8Array = new Uint8Array(arrayBuffer);
+
+          try {
+            // Use the padded loading method
+            audioProcessor.read_audio_bytes(uint8Array, bufferMultiplier);
+          } catch (decodeError) {
+            updateStatus(
+              `Failed to decode audio: ${decodeError.message}. Make sure it's a valid sound file.`,
+              true,
+            );
+            console.error("Decode error:", decodeError);
+            return;
+          }
+
+          // Update the UI and continue as normal
+          updateStatus(`Audio decoded with ${bufferMultiplier}x buffer`);
+          document.querySelector(".main-controls").style.display = "block";
+          document.querySelector(".operations-tabs").style.display = "block";
+          updateStatus("Preparing audio player...");
+          await updateAudioPlayer();
+          updateStatus("Drawing spectrum visualization...");
+          drawSpectrum();
+          updateStatus("Audio loaded and ready for processing!", false, true);
+        } catch (error) {
+          updateStatus(`Error loading audio: ${error.message}`, true);
+          console.error("Error loading audio:", error);
+        }
+      }
+
+      function applyConvolution() {
+        const convolveFile = document.getElementById("convolveFile").files[0];
+        if (!convolveFile) {
+          updateStatus("Please select a file for convolution", true);
+          return;
+        }
+
+        if (!audioProcessor) {
+          updateStatus("No primary audio loaded", true);
+          return;
+        }
+
+        const isCorrelate =
+          document.getElementById("convolutionMode").value === "correlate";
+        const wetMix = parseFloat(
+          document.getElementById("wetMixSlider").value,
+        );
+
+        updateStatus(
+          `${isCorrelate ? "Correlating" : "Convolving"} with ${convolveFile.name}...`,
+        );
+
+        // Read the file
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          try {
+            const arrayBuffer = e.target.result;
+            const uint8Array = new Uint8Array(arrayBuffer);
+
+            // Apply convolution/correlation
+            audioProcessor.convolve_with_file(uint8Array, isCorrelate, wetMix);
+
+            // Update the spectrum display
+            drawSpectrum();
+
+            updateStatus(
+              `${isCorrelate ? "Correlation" : "Convolution"} applied successfully`,
+              false,
+              true,
+            );
+          } catch (error) {
+            updateStatus(
+              `Error during ${isCorrelate ? "correlation" : "convolution"}: ${error.message}`,
+              true,
+            );
+            console.error(`Convolution error:`, error);
+          }
+        };
+
+        reader.onerror = function () {
+          updateStatus(`Error reading ${convolveFile.name}`, true);
+        };
+
+        reader.readAsArrayBuffer(convolveFile);
       }
 
       // Helper function to download a processed part

@@ -8,10 +8,10 @@
 
 use std::sync::Arc;
 
-use num_complex::Complex64;
-use realfft::{ComplexToReal, RealFftPlanner, RealToComplex};
-
 use crate::Result;
+use num_complex::Complex64;
+use realfft::num_traits::AsPrimitive;
+use realfft::{ComplexToReal, RealFftPlanner, RealToComplex};
 
 /// The core FFT audio processing struct.
 ///
@@ -39,6 +39,8 @@ pub struct AudioProcessor {
     /// according to realfft documentation the scaling for forward+inverse fft should be 1/length
     /// so we should then scale with max_amplitude after doing inverse_fft
     pub(crate) max_amplitude: f64,
+    // Multiplier for length when loading data meant to be convolved
+    pub(crate) buffer_multiplier: usize,
 }
 
 // Manual implementation of Debug since the FFT planners don't implement Debug
@@ -75,6 +77,7 @@ impl AudioProcessor {
             fft_c2r: None,
             fft_size: 0,
             max_amplitude: 1.,
+            buffer_multiplier: 1,
         }
     }
 
@@ -103,6 +106,10 @@ impl AudioProcessor {
         self.fft_data.is_some()
     }
 
+    pub fn set_buffer_multiplier(&mut self, buffer_multiplier: usize) {
+        self.buffer_multiplier = buffer_multiplier;
+    }
+
     /// Set audio parameters and time domain data.
     ///
     /// This method is used to load audio data from any source,
@@ -113,6 +120,21 @@ impl AudioProcessor {
         sample_rate: u32,
         channels: u16,
         time_data: Vec<Vec<f64>>,
+    ) -> Result<()> {
+        let mut len = time_data[0].len();
+        if self.buffer_multiplier > 1 {
+            len = len * self.buffer_multiplier;
+        }
+        self.set_audio_data_with_length(sample_rate, channels, time_data, len)
+    }
+
+    // set audio data and force length to the length parameter (for convolve)
+    pub fn set_audio_data_with_length(
+        &mut self,
+        sample_rate: u32,
+        channels: u16,
+        time_data: Vec<Vec<f64>>,
+        length: usize,
     ) -> Result<()> {
         if time_data.is_empty() {
             return Err("No audio data provided".to_string());
@@ -135,7 +157,21 @@ impl AudioProcessor {
 
         self.sample_rate = sample_rate;
         self.channels = channels;
-        self.time_data = Some(time_data);
+
+        if length != time_data[0].len() {
+            let mut time_data_with_length: Vec<Vec<f64>> = Vec::with_capacity(time_data.len());
+            let min_length = usize::min(length, time_data[0].len());
+            for channel in time_data {
+                let mut channel_data: Vec<f64> = vec![0.; length];
+                for j in 0..min_length {
+                    channel_data[j] = channel[j];
+                }
+                time_data_with_length.push(channel_data);
+            }
+            self.time_data = Some(time_data_with_length);
+        } else {
+            self.time_data = Some(time_data);
+        }
 
         // Clear existing FFT data
         self.fft_data = None;

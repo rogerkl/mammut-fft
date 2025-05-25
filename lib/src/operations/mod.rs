@@ -7,6 +7,7 @@
 
 pub mod amplitude;
 pub mod bin_swap;
+pub mod convolution; // New module for convolution operations
 pub mod filters;
 pub mod mixing;
 pub mod peaks;

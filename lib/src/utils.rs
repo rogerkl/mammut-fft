@@ -188,3 +188,25 @@ pub fn format_time(time_sec: f64) -> String {
         format!("{:.2} sec", time_sec)
     }
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn load_from_wav_padded(
+    processor: &mut AudioProcessor,
+    filename: &str,
+    buffer_multiplier: usize,
+) -> Result<()> {
+    use crate::audio_read_write::read_audio_file;
+
+    match read_audio_file(filename) {
+        Ok((sample_rate, data)) => {
+            // Set the audio data in the processor with padding
+            processor.set_buffer_multiplier(buffer_multiplier);
+            processor.set_audio_data(sample_rate, data.len().try_into().unwrap(), data)?;
+
+            // Perform FFT on the loaded data
+            processor.perform_fft()?;
+            Ok(())
+        }
+        Err(error) => Err(format!("Error: {}", error)),
+    }
+}

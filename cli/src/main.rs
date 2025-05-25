@@ -13,6 +13,7 @@ use rustyline::DefaultEditor;
 fn print_help() {
     println!("Available commands:");
     println!("  open <filename>                - Open an audio file and perform FFT");
+    println!("  open_padded <filename> <mult>  - Open an audio file with increased buffer size");
     println!("  save <filename>                - Save the audio file after inverse FFT");
     println!("  pow <exponent>                 - Raise the amplitude of each FFT bin to the specified power");
     println!(
@@ -21,7 +22,9 @@ fn print_help() {
     println!("  highpass <cutoff_hz>           - Apply a highpass filter at the specified cutoff frequency");
     println!("  bandpass <low_hz> <high_hz>    - Apply a bandpass filter between the specified frequencies");
     println!("  chord <freq1> <amp1> <freq2> <amp2> <freq3> <amp3> <freq4> <amp4> <freq5> <amp5> <width> <harmonics> - Apply a chord filter to isolate specific frequencies and harmonics");
-    //println!("  phase <shift_radians>          - Apply a phase shift to all frequencies");
+    println!("  convolve <filename> [wet_mix]  - Convolve the audio with another file");
+    println!("  correlate <filename> [wet_mix] - Correlate the audio with another file");
+    println!("  phase <shift_radians>          - Apply a phase shift to all frequencies");
     println!("  phasemul <factor>              - Multiply all phases by a factor (creates interesting effects)");
     println!("  swapbins <block_size> <repeat> - Randomly swap frequency bins");
     println!(
@@ -41,7 +44,6 @@ fn print_help() {
     println!(
         "  keeppeaks                      - Keep only the local peaks in the frequency spectrum"
     );
-    //println!("  mix <weight1> <weight2> ...     - Mix channels with specified weights");
     println!("  split <filename> <num_parts> [group_size] - Split frequency spectrum into multiple files");
     println!(
         "  info                           - Display information about the loaded audio and FFT data"
@@ -49,7 +51,6 @@ fn print_help() {
     println!("  help                           - Show this help message");
     println!("  quit                           - Exit the program");
 }
-
 /// Process a user command.
 fn process_command(command: &str, processor: &mut AudioProcessor) {
     let parts: Vec<&str> = command.split_whitespace().collect();
@@ -758,6 +759,134 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
             }
 
             println!("Frequency spectrum split completed");
+        }
+        "convolve" => {
+            if parts.len() < 2 || parts.len() > 3 {
+                println!("Usage: convolve <filename> [wet_mix]");
+                println!("  filename: Path to audio file to convolve with the current audio");
+                println!("  wet_mix:  Mix ratio between original and processed signal (0.0-1.0, default: 1.0)");
+                return;
+            }
+
+            // Extract parameters
+            let filename = parts[1];
+
+            // Default wet mix is 1.0 (100% wet)
+            let wet_mix = if parts.len() == 3 {
+                match parts[2].parse::<f64>() {
+                    Ok(value) => {
+                        if !(0.0..=1.0).contains(&value) {
+                            println!("Error: wet_mix must be between 0.0 and 1.0");
+                            return;
+                        }
+                        value
+                    }
+                    Err(_) => {
+                        println!("Error: wet_mix must be a valid floating-point number");
+                        return;
+                    }
+                }
+            } else {
+                1.0 // Default to 100% wet
+            };
+
+            println!(
+                "Convolving with file: {}, wet mix: {:.2}",
+                filename, wet_mix
+            );
+            match processor.convolve_with_file(filename, false, wet_mix) {
+                Ok(_) => println!("Convolution applied successfully"),
+                Err(e) => println!("Error: {}", e),
+            }
+        }
+
+        "correlate" => {
+            if parts.len() < 2 || parts.len() > 3 {
+                println!("Usage: correlate <filename> [wet_mix]");
+                println!("  filename: Path to audio file to correlate with the current audio");
+                println!("  wet_mix:  Mix ratio between original and processed signal (0.0-1.0, default: 1.0)");
+                return;
+            }
+
+            // Extract parameters
+            let filename = parts[1];
+
+            // Default wet mix is 1.0 (100% wet)
+            let wet_mix = if parts.len() == 3 {
+                match parts[2].parse::<f64>() {
+                    Ok(value) => {
+                        if !(0.0..=1.0).contains(&value) {
+                            println!("Error: wet_mix must be between 0.0 and 1.0");
+                            return;
+                        }
+                        value
+                    }
+                    Err(_) => {
+                        println!("Error: wet_mix must be a valid floating-point number");
+                        return;
+                    }
+                }
+            } else {
+                1.0 // Default to 100% wet
+            };
+
+            println!(
+                "Correlating with file: {}, wet mix: {:.2}",
+                filename, wet_mix
+            );
+            match processor.convolve_with_file(filename, true, wet_mix) {
+                Ok(_) => println!("Correlation applied successfully"),
+                Err(e) => println!("Error: {}", e),
+            }
+        }
+
+        "open_padded" => {
+            if parts.len() != 3 {
+                println!("Usage: open_padded <filename> <buffer_multiplier>");
+                println!("  filename: Path to audio file to open");
+                println!("  buffer_multiplier: Factor to multiply buffer size by (>= 1)");
+                return;
+            }
+
+            // Extract parameters
+            let filename = parts[1];
+
+            // Parse buffer multiplier
+            let buffer_multiplier = match parts[2].parse::<usize>() {
+                Ok(value) => {
+                    if value < 1 {
+                        println!("Error: buffer_multiplier must be greater than or equal to 1");
+                        return;
+                    }
+                    value
+                }
+                Err(_) => {
+                    println!("Error: buffer_multiplier must be a valid integer");
+                    return;
+                }
+            };
+
+            println!(
+                "Opening file: {} with buffer multiplier: {}",
+                filename, buffer_multiplier
+            );
+            match utils::load_from_wav_padded(processor, filename, buffer_multiplier) {
+                Ok(_) => {
+                    let info = processor.get_info();
+                    println!(
+                        "Loaded file with {} channels at {} Hz",
+                        info.channels, info.sample_rate
+                    );
+
+                    if let Some(time_info) = &info.time_data {
+                        println!(
+                            "Duration: {}",
+                            utils::format_time(time_info.duration_seconds)
+                        );
+                    }
+                }
+                Err(e) => println!("Error: {}", e),
+            }
         }
         "mix" => {
             if parts.len() < 2 {

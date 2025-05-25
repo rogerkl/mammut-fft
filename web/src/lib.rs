@@ -388,7 +388,11 @@ impl WasmAudioProcessor {
     }
 
     #[wasm_bindgen]
-    pub fn read_audio_bytes(&mut self, data: js_sys::Uint8Array) -> Result<()> {
+    pub fn read_audio_bytes(
+        &mut self,
+        data: js_sys::Uint8Array,
+        buffer_multiplier: usize,
+    ) -> Result<()> {
         // Convert input
         let data_vec = data.to_vec();
 
@@ -398,6 +402,10 @@ impl WasmAudioProcessor {
         match result {
             Ok((sample_rate, channels)) => {
                 self.original_samples = Some(channels.clone());
+
+                if buffer_multiplier > 1 {
+                    self.processor.set_buffer_multiplier(buffer_multiplier);
+                }
 
                 // Set the audio data in the processor
                 self.processor.set_audio_data(
@@ -495,5 +503,65 @@ impl WasmAudioProcessor {
             width_cents,
             harmonics_strength,
         )
+    }
+
+    #[wasm_bindgen]
+    pub fn load_audio_data_with_padding(
+        &mut self,
+        channels: u16,
+        sample_rate: u32,
+        audio_data: &Float32Array,
+        buffer_multiplier: usize,
+    ) -> Result<()> {
+        if buffer_multiplier < 1 {
+            return Err("Buffer multiplier must be >= 1".to_string());
+        }
+
+        let mut samples = Vec::new();
+        let length = audio_data.length() as usize;
+        let channel_length = length / channels as usize;
+
+        // Prepare to deinterleave the audio samples
+        for _ in 0..channels {
+            samples.push(vec![0.0; channel_length]);
+        }
+
+        // Copy audio data to Rust
+        let mut buffer = vec![0.0; length];
+        audio_data.copy_to(&mut buffer[..]);
+
+        // Deinterleave
+        for i in 0..channel_length {
+            for ch in 0..channels as usize {
+                samples[ch][i] = buffer[i * channels as usize + ch] as f64;
+            }
+        }
+
+        // Store original samples
+        self.original_samples = Some(samples.clone());
+
+        // Set audio data in processor with padding
+        self.processor.set_buffer_multiplier(buffer_multiplier);
+        self.processor
+            .set_audio_data(sample_rate, channels, samples)?;
+
+        // Perform FFT
+        self.processor.perform_fft()?;
+
+        Ok(())
+    }
+
+    /// Convolve with another audio file
+    #[wasm_bindgen]
+    pub fn convolve_with_file(
+        &mut self,
+        audio_data: js_sys::Uint8Array,
+        correlate: bool,
+        wet_mix: f64,
+    ) -> Result<()> {
+        let data_vec = audio_data.to_vec();
+
+        self.processor
+            .convolve_with_bytes(data_vec, correlate, wet_mix)
     }
 }
