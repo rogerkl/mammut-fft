@@ -112,7 +112,7 @@ NB! Even though the various operations are mostly based on whats in the original
 
 ## Live Version
 
-A working version can be found at https://anatemno.org/projects/mammut-fft/
+A live version can be found at https://rogerkl.github.io/mammut-fft/
 
 ## Usage (web version)
 
