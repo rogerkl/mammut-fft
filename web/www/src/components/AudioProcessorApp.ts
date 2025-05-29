@@ -22,7 +22,7 @@ export class AudioProcessorApp extends HTMLElement {
     this.innerHTML = `
       <div class="container">
         <div class="header">
-          <img src="/mammut-fft-logo.png" alt="Mammut FFT" width="706" height="123">
+          <img src="/mammut-fft/mammut-fft-logo.png" alt="Mammut FFT" width="706" height="123">
         </div>
         
         <status-bar></status-bar>
@@ -72,6 +72,7 @@ export class AudioProcessorApp extends HTMLElement {
     });
 
     this.audioService.addEventListener('operationApplied', () => {
+      this.updateStatus('Operation applied...');
       this.updateSpectrum();
     });
 
