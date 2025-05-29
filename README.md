@@ -25,11 +25,16 @@ The command-line interface supports the following commands:
 
 ```
   open <filename>                - Open an audio file and perform FFT
+  open_padded <filename> <mult>  - Open an audio file with increased buffer size
   save <filename>                - Save the audio file after inverse FFT
   pow <exponent>                 - Raise the amplitude of each FFT bin to the specified power
   lowpass <cutoff_hz>            - Apply a lowpass filter at the specified cutoff frequency
   highpass <cutoff_hz>           - Apply a highpass filter at the specified cutoff frequency
   bandpass <low_hz> <high_hz>    - Apply a bandpass filter between the specified frequencies
+  chord <freq1> <amp1> <freq2> <amp2> <freq3> <amp3> <freq4> <amp4> <freq5> <amp5> <width> <harmonics> - Apply a chord filter to isolate specific frequencies and harmonics
+  convolve <filename> [wet_mix]  - Convolve the audio with another file
+  correlate <filename> [wet_mix] - Correlate the audio with another file
+  phase <shift_radians>          - Apply a phase shift to all frequencies
   phasemul <factor>              - Multiply all phases by a factor (creates interesting effects)
   swapbins <block_size> <repeat> - Randomly swap frequency bins
   swapchannels <repeat>          - Randomly swap bins between channels (stereo effects)
