@@ -3,6 +3,7 @@ import path from 'path';
 
 export default defineConfig({
   root: '.',
+  base: '/mammut-fft/',
   publicDir: 'public',
   build: {
     target: 'es2022',
