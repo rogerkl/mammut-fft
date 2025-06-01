@@ -4,7 +4,7 @@ export class BinSwapOperation extends BaseOperation {
   protected getConfig(): OperationConfig {
     return {
       name: 'Bin Swap',
-      description: 'Randomly swaps frequency bins to create interesting spectral effects.',
+      description: 'Randomly swaps frequency bins.',
       controls: [
         {
           type: 'slider',

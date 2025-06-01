@@ -24,10 +24,10 @@ export class AudioProcessorApp extends HTMLElement {
         <div class="header">
           <img src="/mammut-fft/mammut-fft-logo.png" alt="Mammut FFT" width="706" height="123">
         </div>
-        
-        <status-bar></status-bar>
-        
+                
         <file-uploader></file-uploader>
+        
+        <status-bar></status-bar>        
         
         <div class="main-content" id="mainContent" style="display: none;">
           <audio-player></audio-player>

@@ -3,8 +3,8 @@ import { BaseOperation, OperationConfig } from './BaseOperation';
 export class FrequencyStretchOperation extends BaseOperation {
   protected getConfig(): OperationConfig {
     return {
-      name: 'Frequency Stretch',
-      description: 'Applies non-linear stretching to the frequency spectrum. Values > 1 compress high frequencies and expand low frequencies, while values < 1 do the opposite.',
+      name: 'Stretch',
+      description: 'Applies non-linear stretching to the frequency spectrum.',
       controls: [
         {
           type: 'slider',

@@ -4,7 +4,7 @@ export class KeepPeaksOperation extends BaseOperation {
   protected getConfig(): OperationConfig {
     return {
       name: 'Keep Peaks',
-      description: 'Keeps only the local maxima in the frequency spectrum, zeroing out all other bins. Useful for isolating prominent frequency components.',
+      description: 'Keeps only the local maxima in the frequency spectrum, zeroing out all other bins.',
       controls: [] // No controls needed for this operation
     };
   }

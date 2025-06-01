@@ -6,7 +6,7 @@ export class FrequencyFiltersOperation extends BaseOperation {
   protected getConfig(): OperationConfig {
     return {
       name: 'Frequency Filter',
-      description: 'Apply various filters to remove or isolate specific frequency ranges in your audio.',
+      description: 'Apply lowpass, highpass or  bandpass filter.',
       controls: [
         {
           type: 'select',

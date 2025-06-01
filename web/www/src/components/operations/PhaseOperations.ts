@@ -4,7 +4,7 @@ export class PhaseMultiplyOperation extends BaseOperation {
   protected getConfig(): OperationConfig {
     return {
       name: 'Phase Multiply',
-      description: 'Multiplies each frequency\'s phase by this factor. Creates interesting time-domain scrambling effects.',
+      description: 'Multiply all phases with the value you specify. A value of -1 will reverse the sound.',
       controls: [
         {
           type: 'slider',

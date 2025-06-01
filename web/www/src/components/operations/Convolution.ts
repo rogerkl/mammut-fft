@@ -6,7 +6,7 @@ export class ConvolutionOperation extends BaseOperation {
   protected getConfig(): OperationConfig {
     return {
       name: 'Convolution',
-      description: 'Convolve or correlate your audio with another audio file. Convolution is useful for applying reverb effects, while correlation can be used for audio analysis.',
+      description: 'Convolve or correlate your audio with another audio file.',
       controls: [
         {
           type: 'select',
@@ -14,8 +14,8 @@ export class ConvolutionOperation extends BaseOperation {
           label: 'Operation Mode',
           defaultValue: 'convolve',
           options: [
-            { value: 'convolve', label: 'Convolution (Reverb)' },
-            { value: 'correlate', label: 'Correlation (Analysis)' }
+            { value: 'convolve', label: 'Convolution' },
+            { value: 'correlate', label: 'Correlation' }
           ],
           help: 'Convolution time-reverses the IR before multiplying spectra'
         },

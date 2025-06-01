@@ -4,7 +4,7 @@ export class ThresholdOperation extends BaseOperation {
   protected getConfig(): OperationConfig {
     return {
       name: 'Threshold',
-      description: 'Apply a threshold filter to remove frequency components based on their amplitude.',
+      description: 'Removes all partials below a given amplitude threshold.',
       controls: [
         {
           type: 'slider',

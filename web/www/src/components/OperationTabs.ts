@@ -33,13 +33,13 @@ export class OperationTabs extends HTMLElement {
     { id: 'bin-swap', label: 'Frequency Bin Swap', component: 'bin-swap-operation' },
     { id: 'channel-swap', label: 'Channel Bin Swap', component: 'channel-swap-operation' },
     { id: 'shift', label: 'Spectrum Shift', component: 'spectrum-shift-operation' },
-    { id: 'stretch', label: 'Frequency Stretch', component: 'frequency-stretch-operation' },
-    { id: 'wobble', label: 'Frequency Wobble', component: 'wobble-operation' },
-    { id: 'threshold', label: 'Threshold Filter', component: 'threshold-operation' },
-    { id: 'derivate', label: 'Amplitude Derivative', component: 'amplitude-derivative-operation' },
+    { id: 'stretch', label: 'Stretch', component: 'frequency-stretch-operation' },
+    { id: 'wobble', label: 'Wobble', component: 'wobble-operation' },
+    { id: 'threshold', label: 'Threshold', component: 'threshold-operation' },
+    { id: 'derivate', label: 'Derivative Amplitude', component: 'amplitude-derivative-operation' },
     { id: 'keep-peaks', label: 'Keep Peaks', component: 'keep-peaks-operation' },
     { id: 'split', label: 'Frequency Spectrum Split', component: 'spectrum-split-operation' },
-    { id: 'filters', label: 'Frequency Filters', component: 'frequency-filters-operation' },
+    { id: 'filters', label: 'Filters', component: 'frequency-filters-operation' },
     { id: 'chord-filter', label: 'Chord Filter', component: 'chord-filter-operation' },
     { id: 'convolution', label: 'Convolution', component: 'convolution-operation' }  
   ];

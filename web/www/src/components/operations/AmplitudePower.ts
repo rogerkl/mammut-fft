@@ -4,7 +4,7 @@ export class AmplitudePowerOperation extends BaseOperation {
   protected getConfig(): OperationConfig {
     return {
       name: 'Amplitude Power',
-      description: 'Raises the amplitude of each frequency bin to the specified power. Values less than 1 compress the dynamic range, while values greater than 1 expand it.',
+      description: 'Raises the amplitude of each frequency bin to the specified power.',
       controls: [
         {
           type: 'slider',

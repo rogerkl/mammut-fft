@@ -4,7 +4,7 @@ export class AmplitudeDerivativeOperation extends BaseOperation {
   protected getConfig(): OperationConfig {
     return {
       name: 'Amplitude Derivative',
-      description: 'Replaces each frequency bin\'s amplitude with the difference between it and the previous bin, creating spectral edge detection effects.',
+      description: 'Replaces each frequency bin\'s amplitude with the difference between it and the previous bin.',
       controls: [
         {
           type: 'slider',

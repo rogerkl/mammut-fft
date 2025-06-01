@@ -4,27 +4,27 @@ export class WobbleOperation extends BaseOperation {
   protected getConfig(): OperationConfig {
     return {
       name: 'Wobble',
-      description: 'Creates a sinusoidal modulation of frequency bins, resulting in a wobbling effect in the frequency domain.',
+      description: 'This transform will alternately stretch and contract the frequency axis using a sinusoidal transfer function for the frequencies._The Frequency parameter controls the number of periods of the transfer function from 0 Hz to the Nyquist frequency, while Amplitude controls its amplitude (1 is the entire frequency axis).',
       controls: [
         {
           type: 'slider',
           id: 'frequency',
-          label: 'Wobble Frequency',
+          label: 'Frequency',
           min: 1,
-          max: 50,
-          step: 0.5,
+          max: 5000,
+          step: 1.,
           defaultValue: 10,
-          help: 'Controls the number of wobble cycles'
+          help: 'Number of periods of the transfer function'
         },
         {
           type: 'slider',
           id: 'amplitude',
-          label: 'Wobble Amplitude',
+          label: 'Amplitude',
           min: 0.001,
           max: 0.1,
           step: 0.001,
           defaultValue: 0.01,
-          help: 'Controls the displacement amount'
+          help: 'Amount'
         }
       ]
     };
