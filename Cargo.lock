@@ -310,6 +310,7 @@ version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
  "hound",
+ "log",
  "num-complex",
  "rand",
  "realfft",

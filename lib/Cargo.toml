@@ -14,6 +14,7 @@ num-complex = { workspace = true }
 console_error_panic_hook = { version = "0.1.7", optional = true }
 rand = { workspace = true }
 symphonia = {version = "0.5.4", features = ["all-codecs"]}
+log = "0.4.27"
 
 [features]
 default = []
