@@ -67,13 +67,18 @@ export class AudioProcessorApp extends HTMLElement {
     });
 
     // Listen for audio service events
-    this.audioService.addEventListener('audioLoaded', () => {
+    this.audioService.addEventListener('audioLoaded', async () => {
       this.updateAllComponents();
+      const audioData = await this.audioService.processAudio();
+      const audioPlayer = this.querySelector('audio-player') as any;
+      audioPlayer?.updateAudio(audioData);
     });
 
     this.audioService.addEventListener('operationApplied', () => {
       this.updateStatus('Operation applied...');
       this.updateSpectrum();
+      const audioPlayer = this.querySelector('audio-player') as any;
+      audioPlayer?.resetProcessed();
     });
 
     this.audioService.addEventListener('reset', () => {
@@ -107,10 +112,13 @@ export class AudioProcessorApp extends HTMLElement {
     });
 
     // Reset button
-    this.addEventListener('resetAudio', () => {
+    this.addEventListener('resetAudio', async () => {
       this.audioService.reset();
       this.updateAllComponents();
       this.updateStatus('Audio reset to original state', 'success');
+      const audioData = await this.audioService.processAudio();
+      const audioPlayer = this.querySelector('audio-player') as any;
+      audioPlayer?.updateAudio(audioData);
     });
   }
 

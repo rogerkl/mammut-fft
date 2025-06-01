@@ -1,9 +1,10 @@
 export class AudioPlayer extends HTMLElement {
   private root: ShadowRoot;
   private audio!: HTMLAudioElement;
-  private processButton!: HTMLButtonElement;
   private resetButton!: HTMLButtonElement;
   private downloadButton!: HTMLButtonElement;
+  private isProcessed: boolean = false;
+  private isProcessing: boolean = false;
 
   constructor() {
     super();
@@ -60,14 +61,6 @@ export class AudioPlayer extends HTMLElement {
           color: white;
         }
         
-        .process-button {
-          background-color: var(--success-color, #4CAF50);
-        }
-        
-        .process-button:hover {
-          background-color: #45a049;
-        }
-        
         .reset-button {
           background-color: #666;
         }
@@ -90,6 +83,11 @@ export class AudioPlayer extends HTMLElement {
           opacity: 0.7;
         }
         
+        .processing {
+          opacity: 0.7;
+          pointer-events: none;
+        }
+        
         @media (max-width: 768px) {
           .audio-panel {
             flex-direction: column;
@@ -107,10 +105,6 @@ export class AudioPlayer extends HTMLElement {
       </style>
       
       <div class="audio-panel">
-        <div class="button-group">
-          <button class="process-button" id="processButton">Process Audio</button>
-        </div>
-        
         <audio id="audioPlayer" controls></audio>
         
         <div class="button-group">
@@ -121,18 +115,29 @@ export class AudioPlayer extends HTMLElement {
     `;
 
     this.audio = this.root.getElementById('audioPlayer') as HTMLAudioElement;
-    this.processButton = this.root.getElementById('processButton') as HTMLButtonElement;
     this.resetButton = this.root.getElementById('resetButton') as HTMLButtonElement;
     this.downloadButton = this.root.getElementById('downloadButton') as HTMLButtonElement;
   }
 
   private setupEventListeners() {
-    this.processButton.addEventListener('click', () => {
-      this.dispatchEvent(new Event('processAudio', { bubbles: true, composed: true }));
+    // Auto-process when play button is clicked
+    this.audio.addEventListener('play', async (event) => {
+      if (!this.isProcessed && !this.isProcessing) {
+        // Pause the audio immediately to prevent playing unprocessed audio
+        this.audio.pause();
+
+        // Process the audio first
+        await this.processAudio();
+
+        // Resume playing after processing is complete
+        if (this.isProcessed) {
+          this.audio.play();
+        }
+      }
     });
 
     this.resetButton.addEventListener('click', () => {
-      this.dispatchEvent(new Event('resetAudio', { bubbles: true, composed: true }));
+      this.resetAudio();
     });
 
     this.downloadButton.addEventListener('click', () => {
@@ -140,22 +145,66 @@ export class AudioPlayer extends HTMLElement {
     });
   }
 
+  private async processAudio(): Promise<void> {
+    if (this.isProcessing) return;
+
+    this.isProcessing = true;
+    this.audio.classList.add('processing');
+
+    try {
+      // Dispatch the processing event and wait for completion
+      const processEvent = new CustomEvent('processAudio', {
+        bubbles: true,
+        composed: true,
+        detail: { callback: this.onProcessingComplete.bind(this) }
+      });
+      this.dispatchEvent(processEvent);
+
+    } catch (error) {
+      console.error('Processing failed:', error);
+      this.onProcessingComplete(false);
+    }
+  }
+
+  private onProcessingComplete(success: boolean = true): void {
+    this.isProcessing = false;
+    this.isProcessed = success;
+    this.audio.classList.remove('processing');
+  }
+
+  private resetAudio(): void {
+    this.isProcessed = false;
+    this.dispatchEvent(new Event('resetAudio', { bubbles: true, composed: true }));
+  }
+
   updateAudio(audioData: ArrayBuffer) {
     const blob = new Blob([audioData], { type: 'audio/wav' });
     const url = URL.createObjectURL(blob);
-    
+
     // Clean up old URL
     if (this.audio.src && this.audio.src.startsWith('blob:')) {
       URL.revokeObjectURL(this.audio.src);
     }
-    
+
     this.audio.src = url;
+
+    // Mark as processed if this is updating with processed audio
+    this.onProcessingComplete(true);
   }
 
   setEnabled(enabled: boolean) {
-    this.processButton.disabled = !enabled;
     this.resetButton.disabled = !enabled;
     this.downloadButton.disabled = !enabled;
+  }
+
+  // Public method to set original/unprocessed audio
+  resetProcessed() {
+    this.isProcessed = false;
+  }
+
+  setOriginalAudio(audioData: ArrayBuffer) {
+    this.isProcessed = false;
+    this.updateAudio(audioData);
   }
 }
 
