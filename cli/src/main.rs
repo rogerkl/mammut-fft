@@ -646,11 +646,12 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
             }
         }
         "split" => {
-            if parts.len() < 3 || parts.len() > 4 {
-                println!("Usage: split <filename> <num_parts> [group_size]");
+            if parts.len() < 3 || parts.len() > 5 {
+                println!("Usage: split <filename> <num_parts> [group_size] [log]");
                 println!("  filename:  Base filename for output files (e.g., 'output.wav' will produce 'output_0.wav', etc.)");
                 println!("  num_parts: Number of files to split into");
                 println!("  group_size: Number of consecutive bins to group together (default: 1)");
+                println!("  log: distribute bins logarithmic");
                 return;
             }
 
@@ -675,10 +676,6 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
             let group_size = if parts.len() == 4 {
                 match parts[3].parse::<usize>() {
                     Ok(value) => {
-                        if value == 0 {
-                            println!("Error: group_size must be greater than zero");
-                            return;
-                        }
                         value
                     }
                     Err(_) => {
@@ -689,6 +686,18 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
             } else {
                 1 // Default group size
             };
+
+            // Parse the optional log
+            let log = if parts.len() == 5 {
+                if "log" == parts[4].trim() {
+                    true
+                }
+                else {
+                    false
+                }
+            } else {
+                false
+            };            
 
             println!(
                 "Splitting frequency spectrum into {} parts with group size {}...",
@@ -721,7 +730,7 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
                 println!("Processing part {}/{}...", i + 1, num_parts);
 
                 // Prepare this part of the split
-                match processor.prepare_split_part(i, num_parts, group_size) {
+                match processor.prepare_split_part(i, num_parts, group_size, log) {
                     Ok(_) => {
                         println!("Prepared frequency bins for part {}", i);
                     }

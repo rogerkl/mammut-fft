@@ -27,18 +27,25 @@ export class SpectrumSplitOperation extends BaseOperation {
           type: 'number',
           id: 'groupSize',
           label: 'Group Size',
-          min: 1,
+          min: 0,
           max: 32,
           step: 1,
           defaultValue: 1,
-          help: 'Number of consecutive frequency bins to group together'
+          help: 'Number of consecutive frequency bins to group together, 0 = num bins/num parts'
+        },
+        {
+          type: 'checkbox',
+          id: 'distributeLog',
+          label: 'Use log distribution',
+          defaultValue: false,
+          help: 'Check to distribute the frequencies for each part using a log distribution'
         }
       ]
     };
   }
 
   protected async onApply(values: Record<string, any>): Promise<void> {
-    const { baseName, numParts, groupSize } = values;
+    const { baseName, numParts, groupSize, distributeLog } = values;
     
     // Show progress
     this.setProcessing(true, `Splitting into ${numParts} parts...`);
@@ -49,7 +56,7 @@ export class SpectrumSplitOperation extends BaseOperation {
         this.updateProgress(`Processing part ${i + 1}/${numParts}...`);
         
         // Prepare this part
-        this.audioService!.prepareSplitPart(i, numParts, groupSize);
+        this.audioService!.prepareSplitPart(i, numParts, groupSize, distributeLog);
         
         // Process and download
         await this.audioService!.processAudio();

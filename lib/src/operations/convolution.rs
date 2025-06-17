@@ -6,8 +6,8 @@
 //! in the frequency domain, which can be used for effects like reverb,
 //! echo simulation, and audio analysis.
 
-use num_complex::Complex64;
 use log::{info, warn};
+use num_complex::Complex64;
 
 use crate::audio_read_write::read_audio_bytes;
 use crate::processor::AudioProcessor;
@@ -51,8 +51,10 @@ impl AudioProcessor {
 
         // Check if sample rates match
         if ir_sample_rate != self.sample_rate {
-            warn!("Sample rate mismatch: current audio is at {} Hz, impulse response is at {} Hz",
-                self.sample_rate, ir_sample_rate);
+            warn!(
+                "Sample rate mismatch: current audio is at {} Hz, impulse response is at {} Hz",
+                self.sample_rate, ir_sample_rate
+            );
         }
 
         // Create a temporary processor for the impulse response
@@ -117,8 +119,10 @@ impl AudioProcessor {
 
         // Check if sample rates match
         if ir_sample_rate != self.sample_rate {
-            warn!("Sample rate mismatch: current audio is at {} Hz, impulse response is at {} Hz",
-                self.sample_rate, ir_sample_rate);
+            warn!(
+                "Sample rate mismatch: current audio is at {} Hz, impulse response is at {} Hz",
+                self.sample_rate, ir_sample_rate
+            );
         }
 
         // Create a temporary processor for the impulse response

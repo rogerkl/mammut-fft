@@ -475,9 +475,10 @@ impl WasmAudioProcessor {
         part_index: usize,
         num_parts: usize,
         group_size: usize,
+        log: bool,
     ) -> Result<()> {
         self.processor
-            .prepare_split_part(part_index, num_parts, group_size)
+            .prepare_split_part(part_index, num_parts, group_size, log)
     }
 
     /// Apply a chord filter
