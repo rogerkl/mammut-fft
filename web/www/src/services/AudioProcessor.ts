@@ -196,6 +196,7 @@ export class AudioProcessorService extends EventTarget {
 
   applyPhaseMultiply(factor: number): void {
     this.processor.apply_phase_multiply(factor);
+    this.dispatchOperationApplied();
   }
 
   applySpectrumShift(shiftHz: number): void {
