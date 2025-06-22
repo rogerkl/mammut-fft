@@ -5,6 +5,7 @@ export class AudioProcessorService extends EventTarget {
   private processor: WasmAudioProcessor;
   private audioContext: AudioContext | null = null;
   private currentFileName: string = '';
+  private hasUnprocessedOperations: boolean = false;
 
   constructor() {
     super();
@@ -12,25 +13,27 @@ export class AudioProcessorService extends EventTarget {
   }
 
   async loadAudioFile(file: File, bufferMultiplier: number): Promise<void> {
-    this.currentFileName = file.name;
-    
-    // Initialize audio context on user interaction
-    if (!this.audioContext) {
-      this.audioContext = new AudioContext();
+      this.currentFileName = file.name;
+      this.hasUnprocessedOperations = false; // Reset flag when loading new audio
+      
+      // Initialize audio context on user interaction
+      if (!this.audioContext) {
+        this.audioContext = new AudioContext();
+      }
+  
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+  
+      try {
+        this.processor.read_audio_bytes(uint8Array, bufferMultiplier);
+        this.dispatchEvent(new CustomEvent('audioLoaded', { 
+          detail: { fileName: file.name, info: this.getInfo() } 
+        }));
+      } catch (error) {
+        throw new Error(`Failed to load audio: ${error}`);
+      }
     }
 
-    const arrayBuffer = await file.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-
-    try {
-      this.processor.read_audio_bytes(uint8Array, bufferMultiplier);
-      this.dispatchEvent(new CustomEvent('audioLoaded', { 
-        detail: { fileName: file.name, info: this.getInfo() } 
-      }));
-    } catch (error) {
-      throw new Error(`Failed to load audio: ${error}`);
-    }
-  }
 
   getInfo(): AudioInfo {
     return this.processor.get_info();
@@ -41,60 +44,79 @@ export class AudioProcessorService extends EventTarget {
   }
 
   async processAudio(): Promise<ArrayBuffer> {
-    this.processor.perform_ifft();
-    const processedData = this.processor.get_processed_audio_normalized();
-    
-    if (!this.audioContext) {
-      throw new Error('Audio context not initialized');
-    }
-
-    const info = this.getInfo();
-    const numChannels = info.channels;
-    const length = processedData.length / numChannels;
-
-    // Create AudioBuffer
-    const audioBuffer = this.audioContext.createBuffer(
-      numChannels,
-      length,
-      info.sample_rate
-    );
-
-    // Deinterleave and copy data
-    for (let channel = 0; channel < numChannels; channel++) {
-      const channelData = audioBuffer.getChannelData(channel);
-      for (let i = 0; i < length; i++) {
-        channelData[i] = processedData[i * numChannels + channel];
+      this.processor.perform_ifft();
+      this.hasUnprocessedOperations = false; // Reset flag since we just processed
+      const processedData = this.processor.get_processed_audio_normalized();
+      
+      if (!this.audioContext) {
+        throw new Error('Audio context not initialized');
       }
+  
+      const info = this.getInfo();
+      const numChannels = info.channels;
+      const length = processedData.length / numChannels;
+  
+      // Create AudioBuffer
+      const audioBuffer = this.audioContext.createBuffer(
+        numChannels,
+        length,
+        info.sample_rate
+      );
+  
+      // Deinterleave and copy data
+      for (let channel = 0; channel < numChannels; channel++) {
+        const channelData = audioBuffer.getChannelData(channel);
+        for (let i = 0; i < length; i++) {
+          channelData[i] = processedData[i * numChannels + channel];
+        }
+      }
+  
+      // Convert to WAV
+      return this.audioBufferToWav(audioBuffer);
     }
 
-    // Convert to WAV
-    return this.audioBufferToWav(audioBuffer);
-  }
 
-  downloadProcessedAudio(filename?: string): void {
-    const wavData = this.processor.save_to_wav_bytes();
-    const blob = new Blob([wavData], { type: 'audio/wav' });
-    const url = URL.createObjectURL(blob);
+  downloadProcessedAudio(filename?: string): { wasProcessed: boolean } {
+      let wasProcessed = false;
+      
+      // Check if there are unprocessed operations
+      if (this.hasUnprocessedOperations) {
+        // Automatically process the audio before download
+        console.log('Audio operations detected - performing inverse FFT before download...');
+        this.processor.perform_ifft();
+        this.hasUnprocessedOperations = false;
+        wasProcessed = true;
+      }
+  
+      const wavData = this.processor.save_to_wav_bytes();
+      const blob = new Blob([wavData], { type: 'audio/wav' });
+      const url = URL.createObjectURL(blob);
+  
+      const outputFilename = filename || 
+        (this.currentFileName ? 
+          `${this.currentFileName.replace(/\.[^/.]+$/, '')}_processed.wav` : 
+          'processed_audio.wav');
+  
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = outputFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      URL.revokeObjectURL(url);
+      
+      return { wasProcessed };
+    }
 
-    const outputFilename = filename || 
-      (this.currentFileName ? 
-        `${this.currentFileName.replace(/\.[^/.]+$/, '')}_processed.wav` : 
-        'processed_audio.wav');
 
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = outputFilename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    URL.revokeObjectURL(url);
-  }
 
   reset(): void {
-    this.processor.reset();
-    this.dispatchEvent(new Event('reset'));
-  }
+      this.processor.reset();
+      this.hasUnprocessedOperations = false; // Reset flag when audio is reset
+      this.dispatchEvent(new Event('reset'));
+    }
+
 
   // Audio processing operations
   applyPower(exponent: number): void {
@@ -166,14 +188,19 @@ export class AudioProcessorService extends EventTarget {
     this.processor.free();
   }
 
+  private dispatchOperationApplied()
+  {
+    this.hasUnprocessedOperations = true; // Mark that operations have been applied
+    this.dispatchEvent(new Event('operationApplied'));
+  }
+
   applyPhaseMultiply(factor: number): void {
     this.processor.apply_phase_multiply(factor);
-    this.dispatchEvent(new Event('operationApplied'));
   }
 
   applySpectrumShift(shiftHz: number): void {
     this.processor.apply_spectrum_shift(shiftHz);
-    this.dispatchEvent(new Event('operationApplied'));
+    this.dispatchOperationApplied();
   }
 
   applyStretch(exponent: number): void {
@@ -183,32 +210,32 @@ export class AudioProcessorService extends EventTarget {
 
   applyWobble(frequency: number, amplitude: number): void {
     this.processor.apply_wobble(frequency, amplitude);
-    this.dispatchEvent(new Event('operationApplied'));
+    this.dispatchOperationApplied();
   }
 
   applyThreshold(level: number, removeAbove: boolean): void {
     this.processor.apply_threshold(level, removeAbove);
-    this.dispatchEvent(new Event('operationApplied'));
+    this.dispatchOperationApplied();
   }
 
   applyAmplitudeDerivative(multiplier: number): void {
     this.processor.apply_amplitude_derivative(multiplier);
-    this.dispatchEvent(new Event('operationApplied'));
+    this.dispatchOperationApplied();
   }
 
   keepPeaks(): void {
     this.processor.keep_peaks();
-    this.dispatchEvent(new Event('operationApplied'));
+    this.dispatchOperationApplied();
   }
 
   swapBins(blockSize: number, repeat: number): void {
     this.processor.swap_bins(blockSize, repeat);
-    this.dispatchEvent(new Event('operationApplied'));
+    this.dispatchOperationApplied();
   }
 
   swapChannels(repeat: number): void {
     this.processor.swap_channels(repeat);
-    this.dispatchEvent(new Event('operationApplied'));
+    this.dispatchOperationApplied();
   }
 
   applyChordFilter(
@@ -230,7 +257,7 @@ export class AudioProcessorService extends EventTarget {
       widthCents,
       harmonicsStrength
     );
-    this.dispatchEvent(new Event('operationApplied'));
+    this.dispatchOperationApplied();
   }
 
   prepareSplitPart(partIndex: number, numParts: number, groupSize: number, log: boolean): void {
@@ -243,6 +270,6 @@ export class AudioProcessorService extends EventTarget {
 
   async convolveWithFile(audioData: Uint8Array, correlate: boolean, wetMix: number): Promise<void> {
     this.processor.convolve_with_file(audioData, correlate, wetMix);
-    this.dispatchEvent(new Event('operationApplied'));
+    this.dispatchOperationApplied();
   }
 }

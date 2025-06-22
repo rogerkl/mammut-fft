@@ -104,8 +104,12 @@ export class AudioProcessorApp extends HTMLElement {
     // Download button
     this.addEventListener('downloadAudio', () => {
       try {
-        this.audioService.downloadProcessedAudio();
-        this.updateStatus('Audio downloaded successfully!', 'success');
+        const result = this.audioService.downloadProcessedAudio();
+        if (result.wasProcessed) {
+          this.updateStatus('Audio automatically processed and downloaded successfully!', 'success');
+        } else {
+          this.updateStatus('Audio downloaded successfully!', 'success');
+        }
       } catch (error) {
         this.updateStatus(`Error downloading audio: ${error}`, 'error');
       }
