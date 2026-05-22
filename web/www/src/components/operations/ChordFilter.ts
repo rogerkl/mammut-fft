@@ -88,21 +88,31 @@ export class ChordFilterOperation extends BaseOperation {
   }
 
   private renderPianoKeys(): string {
-    // Simplified piano rendering
     const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-    const blackKeys = ['C#', 'D#', null, 'F#', 'G#', 'A#'];
-    
+    // Each black key sits centered on the boundary *after* the white key at this index.
+    // No black key after E (index 2) or B (index 6).
+    const blackKeys: { note: string; afterWhiteIndex: number }[] = [
+      { note: 'C#', afterWhiteIndex: 0 },
+      { note: 'D#', afterWhiteIndex: 1 },
+      { note: 'F#', afterWhiteIndex: 3 },
+      { note: 'G#', afterWhiteIndex: 4 },
+      { note: 'A#', afterWhiteIndex: 5 },
+    ];
+    const whiteWidthPct = 100 / whiteKeys.length;
+    const blackWidthPct = whiteWidthPct * 0.6;
+
     return `
       <div class="white-keys">
-        ${whiteKeys.map(note => 
+        ${whiteKeys.map(note =>
           `<button class="key white-key" data-note="${note}">${note}</button>`
         ).join('')}
       </div>
       <div class="black-keys">
-        ${blackKeys.map(note => 
-          note ? `<button class="key black-key" data-note="${note}">${note}</button>` 
-               : '<div class="black-key-space"></div>'
-        ).join('')}
+        ${blackKeys.map(({ note, afterWhiteIndex }) => {
+          const boundary = (afterWhiteIndex + 1) * whiteWidthPct;
+          const left = boundary - blackWidthPct / 2;
+          return `<button class="key black-key" data-note="${note}" style="left:${left}%;width:${blackWidthPct}%">${note}</button>`;
+        }).join('')}
       </div>
     `;
   }
@@ -193,21 +203,19 @@ export class ChordFilterOperation extends BaseOperation {
         height: 80px;
       }
       
-      .white-keys, .black-keys {
+      .white-keys {
         display: flex;
         position: absolute;
         width: 100%;
-      }
-      
-      .white-keys {
         height: 100%;
       }
-      
+
       .black-keys {
+        position: absolute;
+        width: 100%;
         height: 60%;
-        padding: 0 2%;
       }
-      
+
       .key {
         border: 1px solid #333;
         cursor: pointer;
@@ -216,25 +224,22 @@ export class ChordFilterOperation extends BaseOperation {
         justify-content: center;
         padding-bottom: 5px;
         font-size: 12px;
+        box-sizing: border-box;
       }
-      
+
       .white-key {
         flex: 1;
         background: white;
         color: black;
-        margin: 0 1px;
       }
-      
+
       .black-key {
-        width: 8%;
+        position: absolute;
+        top: 0;
+        height: 100%;
         background: #333;
         color: white;
-        margin: 0 1%;
-      }
-      
-      .black-key-space {
-        width: 8%;
-        margin: 0 1%;
+        /* left and width set inline per key */
       }
       
       .key:active {
