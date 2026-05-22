@@ -4,8 +4,6 @@
 //! weights to overlapping bins instead of hard boundaries.
 
 use crate::AudioProcessor;
-use num_complex::Complex64;
-use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct BinAmplitude {
@@ -64,35 +62,29 @@ impl FadeBoundariesPart {
     fn bin_amplitudes(&self) -> Vec<BinAmplitude> {
         let mut bin_amplitudes = Vec::new();
         let mut current_bin_start = None;
-        match &self.fade_out_start {
-            Some(fos) => {
-                //0->0.5
-                let count = ((fos.bin_end + 1) - fos.bin_start);
+        if let Some(fos) = &self.fade_out_start {
+            //0->0.5
+            let count = (fos.bin_end + 1) - fos.bin_start;
+            let factor = 0.5 / count as f64;
+            for (counter, bin) in (fos.bin_start..=fos.bin_end).enumerate() {
+                bin_amplitudes.push(BinAmplitude {
+                    bin,
+                    amplitude: counter as f64 * factor,
+                });
+                current_bin_start = Some(bin);
+            }
+            if let Some(fis) = &self.fade_in_start {
+                //0.5->1
+                let count = (fis.bin_end + 1) - fis.bin_start;
                 let factor = 0.5 / count as f64;
-                for (counter, bin) in (fos.bin_start..=fos.bin_end).enumerate() {
+                for (counter, bin) in (fis.bin_start..=fis.bin_end).enumerate() {
                     bin_amplitudes.push(BinAmplitude {
                         bin,
-                        amplitude: counter as f64 * factor,
+                        amplitude: 0.5 + (counter as f64 * factor),
                     });
                     current_bin_start = Some(bin);
                 }
-                match &self.fade_in_start {
-                    Some(fis) => {
-                        //0.5->1
-                        let count = ((fis.bin_end + 1) - fis.bin_start);
-                        let factor = 0.5 / count as f64;
-                        for (counter, bin) in (fis.bin_start..=fis.bin_end).enumerate() {
-                            bin_amplitudes.push(BinAmplitude {
-                                bin,
-                                amplitude: 0.5 + (counter as f64 * factor),
-                            });
-                            current_bin_start = Some(bin);
-                        }
-                    }
-                    None => {}
-                }
             }
-            None => {}
         }
         let middle_start_bin = match &current_bin_start {
             Some(s) => *s + 1,
@@ -106,30 +98,24 @@ impl FadeBoundariesPart {
                     bin_amplitudes.push(BinAmplitude { bin, amplitude: 1. });
                 }
 
-                let count = ((foe.bin_end + 1) - foe.bin_start);
+                let count = (foe.bin_end + 1) - foe.bin_start;
                 let factor = 0.5 / count as f64;
                 for (counter, bin) in (foe.bin_start..=foe.bin_end).enumerate() {
                     bin_amplitudes.push(BinAmplitude {
                         bin,
                         amplitude: 0.5 + ((count - counter) as f64 * factor),
                     });
-                    current_bin_start = Some(bin);
                 }
-                match &self.fade_in_end {
+                if let Some(fie) = &self.fade_in_end {
                     //0.5->0
-                    Some(fie) => {
-                        //0->0.5
-                        let count = ((fie.bin_end + 1) - fie.bin_start);
-                        let factor = 0.5 / count as f64;
-                        for (counter, bin) in (fie.bin_start..=fie.bin_end).enumerate() {
-                            bin_amplitudes.push(BinAmplitude {
-                                bin,
-                                amplitude: (count - counter) as f64 * factor,
-                            });
-                            current_bin_start = Some(bin);
-                        }
+                    let count = (fie.bin_end + 1) - fie.bin_start;
+                    let factor = 0.5 / count as f64;
+                    for (counter, bin) in (fie.bin_start..=fie.bin_end).enumerate() {
+                        bin_amplitudes.push(BinAmplitude {
+                            bin,
+                            amplitude: (count - counter) as f64 * factor,
+                        });
                     }
-                    None => {}
                 }
             }
             None => {
@@ -143,16 +129,12 @@ impl FadeBoundariesPart {
 }
 
 impl AudioProcessor {
-    /// Represents the amplitude for a bin in a part
-
     /// Applies crossfade to a hard distribution, creating smooth transitions between parts
     pub fn apply_crossfade_to_distribution(
         hard_assignments: Vec<usize>,
         crossfade_factor: f64,
-        num_parts: usize,
+        _num_parts: usize,
     ) -> Vec<PartBinAmplitudes> {
-        let num_bins = hard_assignments.len();
-
         // Validate crossfade factor
         let crossfade_factor = crossfade_factor.clamp(0.0, 0.5);
 
@@ -160,7 +142,7 @@ impl AudioProcessor {
         let mut vec_index: Option<usize> = None;
 
         for (bin_idx, &part_idx) in hard_assignments.iter().enumerate() {
-            if let Some(mut index) = &vec_index {
+            if let Some(index) = vec_index {
                 if part_boundaries.get(index).unwrap().part != part_idx {
                     part_boundaries.push(FadeBoundariesPart {
                         part: part_idx,
@@ -210,7 +192,7 @@ impl AudioProcessor {
             });
 
             // Now get mutable access and update
-            if (crossfade_factor > 0.0) {
+            if crossfade_factor > 0.0 {
                 if let Some(fade_boundaries_part) = part_boundaries.get_mut(index) {
                     // Process previous part fade
                     if let Some((fade_out_start_start, prev_bin_end)) = prev_part_data {

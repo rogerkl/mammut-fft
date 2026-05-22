@@ -26,7 +26,7 @@ impl AudioProcessor {
         num_freq_bins: usize,
         num_parts: usize,
         complex: bool,
-        octaves: u8,
+        _octaves: u8,
     ) -> Vec<usize> {
         let num_bins = if complex {
             num_freq_bins * 2
@@ -88,9 +88,9 @@ impl AudioProcessor {
         let start_bin = if octaves < 1 {
             1
         } else {
-            1 + (num_freq_bins as f32 / (2. as f32).powf(octaves as f32)) as usize
+            1 + (num_freq_bins as f32 / 2f32.powf(octaves as f32)) as usize
         };
-        println!("start_bin: {}", start_bin);
+        log::info!("start_bin: {}", start_bin);
 
         // don't really need correct samplerate ...
         let sample_rate = num_freq_bins as f32;
@@ -113,9 +113,8 @@ impl AudioProcessor {
             log_range
         );
 
-        for bin in 0..start_bin {
-            bin_assignments[bin] = 0;
-        }
+        // Bins below start_bin stay at 0 (the vec is already zero-initialized) — they
+        // get dumped into part 0. See doc/FrequencySplit.md ("Octaves to process").
 
         // Assign each bin to a part
         for bin in start_bin..num_freq_bins + 1 {
@@ -184,8 +183,8 @@ impl AudioProcessor {
         }
         let num_bins = num_freq_bins / group_size;
         let mut bin_assignments = func(num_freq_bins, num_bins, complex, octaves);
-        for bin in 0..bin_assignments.len() {
-            bin_assignments[bin] = bin_assignments[bin] % num_parts;
+        for v in &mut bin_assignments {
+            *v %= num_parts;
         }
         bin_assignments
     }
@@ -277,7 +276,7 @@ impl AudioProcessor {
         crossfade_factor: f64,
         num_freq_bins: usize,
     ) -> Vec<PartBinAmplitudes> {
-        let crossfade_distribution = if group_size == 0 {
+        if group_size == 0 {
             Self::distribute_bins_with_crossfade(
                 num_freq_bins,
                 num_parts,
@@ -287,11 +286,14 @@ impl AudioProcessor {
                 crossfade_factor,
             )
         } else {
-            // For grouped distribution, apply crossfade to the grouped result
+            // For grouped distribution, apply crossfade to the grouped result.
+            // complex=false: we operate on real-FFT bins (length num_freq_bins+1);
+            // complex=true would size the assignment vector to num_freq_bins*2 and
+            // emit bin indices past the end of data[channel].
             let hard_assignments = Self::distribute_grouped(
                 num_freq_bins,
                 num_parts,
-                true,
+                false,
                 octaves,
                 group_size,
                 if log {
@@ -301,8 +303,7 @@ impl AudioProcessor {
                 },
             );
             Self::apply_crossfade_to_distribution(hard_assignments, crossfade_factor, num_parts)
-        };
-        crossfade_distribution
+        }
     }
 
     /// Distribute bins with crossfade support

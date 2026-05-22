@@ -31,7 +31,7 @@ export class SpectrumSplitOperation extends BaseOperation {
           max: 32,
           step: 1,
           defaultValue: 1,
-          help: 'Number of consecutive frequency bins to group together, 0 = num bins/num parts'
+          help: '0 = one contiguous band per part (band split). >=1 = group bins into chunks of this size, then assign chunks to parts round-robin (interleaved split)'
         },
         {
           type: 'checkbox',

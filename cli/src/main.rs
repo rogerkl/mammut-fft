@@ -690,15 +690,7 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
             };
 
             // Parse the optional log
-            let log = if parts.len() >= 5 {
-                if "log" == parts[4].trim() {
-                    true
-                } else {
-                    false
-                }
-            } else {
-                false
-            };
+            let log = parts.len() >= 5 && parts[4].trim() == "log";
 
             let octaves = if parts.len() >= 6 {
                 match parts[5].parse::<u8>() {
