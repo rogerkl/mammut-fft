@@ -476,9 +476,11 @@ impl WasmAudioProcessor {
         num_parts: usize,
         group_size: usize,
         log: bool,
+        octaves: u8,
+        crossfade_factor: f64,
     ) -> Result<()> {
         self.processor
-            .prepare_split_part(part_index, num_parts, group_size, log)
+            .prepare_split_part(part_index, num_parts, group_size, log, octaves, crossfade_factor)
     }
 
     /// Apply a chord filter

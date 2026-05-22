@@ -646,12 +646,16 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
             }
         }
         "split" => {
-            if parts.len() < 3 || parts.len() > 5 {
-                println!("Usage: split <filename> <num_parts> [group_size] [log]");
-                println!("  filename:  Base filename for output files (e.g., 'output.wav' will produce 'output_0.wav', etc.)");
+            if parts.len() < 3 || parts.len() > 7 {
+                println!("Usage: split <filename> <num_parts> [group_size] [log|lin] [octaves] [crossfade_factor]");
+                println!("  filename:  Base filename for output files");
                 println!("  num_parts: Number of files to split into");
                 println!("  group_size: Number of consecutive bins to group together (default: 1)");
-                println!("  log: distribute bins logarithmic");
+                println!("  log|lin: distribute bins logarithmic or linear (default: lin)");
+                println!("  octaves: how many octaves to distribute (default: all)");
+                println!(
+                    "  crossfade_factor: crossfade factor 0.0-0.5 (default: 0.0, no crossfade)"
+                );
                 return;
             }
 
@@ -673,31 +677,60 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
             };
 
             // Parse the optional group_size parameter (default to 1 if not provided)
-            let group_size = if parts.len() == 4 {
+            let group_size = if parts.len() >= 4 {
                 match parts[3].parse::<usize>() {
-                    Ok(value) => {
-                        value
-                    }
+                    Ok(value) => value,
                     Err(_) => {
                         println!("Error: group_size must be a valid positive integer");
                         return;
                     }
                 }
             } else {
-                1 // Default group size
+                0 // Default group size
             };
 
             // Parse the optional log
-            let log = if parts.len() == 5 {
+            let log = if parts.len() >= 5 {
                 if "log" == parts[4].trim() {
                     true
-                }
-                else {
+                } else {
                     false
                 }
             } else {
                 false
-            };            
+            };
+
+            let octaves = if parts.len() >= 6 {
+                match parts[5].parse::<u8>() {
+                    Ok(value) => value,
+                    Err(_) => {
+                        println!("Error: octaves must be a valid positive integer");
+                        return;
+                    }
+                }
+            } else {
+                0
+            };
+
+            let crossfade_factor = if parts.len() >= 7 {
+                match parts[6].parse::<f64>() {
+                    Ok(value) => {
+                        if !(0.0..=0.5).contains(&value) {
+                            println!("Error: crossfade_factor must be between 0.0 and 0.5");
+                            return;
+                        }
+                        value
+                    }
+                    Err(_) => {
+                        println!(
+                            "Error: crossfade_factor must be a valid number between 0.0 and 0.5"
+                        );
+                        return;
+                    }
+                }
+            } else {
+                0.0
+            };
 
             println!(
                 "Splitting frequency spectrum into {} parts with group size {}...",
@@ -730,7 +763,7 @@ fn process_command(command: &str, processor: &mut AudioProcessor) {
                 println!("Processing part {}/{}...", i + 1, num_parts);
 
                 // Prepare this part of the split
-                match processor.prepare_split_part(i, num_parts, group_size, log) {
+                match processor.prepare_split_part(i, num_parts, group_size, log, octaves, crossfade_factor) {
                     Ok(_) => {
                         println!("Prepared frequency bins for part {}", i);
                     }

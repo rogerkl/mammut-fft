@@ -56,7 +56,7 @@ export interface WasmAudioProcessor {
   reset(): void;
   reset_split(): void;
   reset_to_original(): void;
-  prepare_split_part(part_index: number, num_parts: number, group_size: number,log: boolean): void;
+  prepare_split_part(part_index: number, num_parts: number, group_size: number,log: boolean, octaves: number, crossfade_factor: number): void;
   mix_channels(weights: Float64Array): void;
   convolve_with_file(audio_data: Uint8Array, correlate: boolean, wet_mix: number): void;
 }

@@ -16,3 +16,4 @@ pub mod spectral;
 pub mod split;
 pub mod threshold;
 pub mod wobble;
+pub mod crossfade;

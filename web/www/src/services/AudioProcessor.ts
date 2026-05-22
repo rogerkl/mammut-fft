@@ -261,8 +261,8 @@ export class AudioProcessorService extends EventTarget {
     this.dispatchOperationApplied();
   }
 
-  prepareSplitPart(partIndex: number, numParts: number, groupSize: number, log: boolean): void {
-    this.processor.prepare_split_part(partIndex, numParts, groupSize, log);
+  prepareSplitPart(partIndex: number, numParts: number, groupSize: number, log: boolean, octaves: number, crossfade_factor: number): void {
+    this.processor.prepare_split_part(partIndex, numParts, groupSize, log, octaves, crossfade_factor);
   }
 
   resetSplit(): void {

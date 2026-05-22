@@ -39,13 +39,33 @@ export class SpectrumSplitOperation extends BaseOperation {
           label: 'Use log distribution',
           defaultValue: false,
           help: 'Check to distribute the frequencies for each part using a log distribution'
+        },
+        {
+          type: 'slider',
+          id: 'octaves',
+          label: 'Octaves to process (if log)',
+          min: 1,
+          max: 12,
+          step: 1,
+          defaultValue: 10,
+          help: 'Octaves counting down from nyquist, lowest octaves will be added to part 0'
+        } ,
+        {
+          type: 'slider',
+          id: 'crossfadeFactor',
+          label: 'Crossfade between parts',
+          min: 0,
+          max: 0.5,
+          step: 0.01,
+          defaultValue: 0,
+          help: '0 = No crossfade, 0.5 crossfade between half the spectrum of a part'
         }
       ]
     };
   }
 
   protected async onApply(values: Record<string, any>): Promise<void> {
-    const { baseName, numParts, groupSize, distributeLog } = values;
+    const { baseName, numParts, groupSize, distributeLog, octaves, crossfadeFactor} = values;
     
     // Show progress
     this.setProcessing(true, `Splitting into ${numParts} parts...`);
@@ -56,7 +76,7 @@ export class SpectrumSplitOperation extends BaseOperation {
         this.updateProgress(`Processing part ${i + 1}/${numParts}...`);
         
         // Prepare this part
-        this.audioService!.prepareSplitPart(i, numParts, groupSize, distributeLog);
+        this.audioService!.prepareSplitPart(i, numParts, groupSize, distributeLog, octaves, crossfadeFactor);
         
         // Process and download
         await this.audioService!.processAudio();
